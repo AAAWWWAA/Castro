@@ -216,11 +216,11 @@ public:
 /// @param radial_grav
 ///
   void make_radial_gravity(int level, amrex::Real time,
-// #ifdef AMREX_USE_CUDA
-//           amrex::Vector<amrex::Real, amrex::CudaManagedAllocator<amrex::Real>>& radial_grav);
-// #else
+#ifdef AMREX_USE_CUDA
+          amrex::Vector<amrex::Real, amrex::CudaManagedAllocator<amrex::Real>>& radial_grav);
+#else
           amrex::Vector<amrex::Real>& radial_grav);
-// #endif
+#endif
 
 ///
 /// @param level
@@ -228,11 +228,11 @@ public:
 /// @param grav_vector
 ///
   void interpolate_monopole_grav(int level,
-// #ifdef AMREX_USE_CUDA
-//     amrex::Vector<amrex::Real, amrex::CudaManagedAllocator<amrex::Real>>& radial_grav,
-// #else
+#ifdef AMREX_USE_CUDA
+    amrex::Vector<amrex::Real, amrex::CudaManagedAllocator<amrex::Real>>& radial_grav,
+#else
     amrex::Vector<amrex::Real>& radial_grav,
-// #endif
+#endif
     amrex::MultiFab& grav_vector);
 
 
@@ -336,15 +336,15 @@ protected:
   static int   test_solves;
   static amrex::Real  mass_offset;
 
-// #ifdef AMREX_USE_CUDA
-//     amrex::Vector< amrex::Vector<amrex::Real, amrex::CudaManagedAllocator<amrex::Real> > > radial_grav_old;
-//     amrex::Vector< amrex::Vector<amrex::Real, amrex::CudaManagedAllocator<amrex::Real> > > radial_grav_new;
-//     amrex::Vector< amrex::Vector<amrex::Real, amrex::CudaManagedAllocator<amrex::Real> > > radial_mass;
-//     amrex::Vector< amrex::Vector<amrex::Real, amrex::CudaManagedAllocator<amrex::Real> > > radial_vol;
-// #ifdef GR_GRAV
-//     amrex::Vector< amrex::Vector<amrex::Real, amrex::CudaManagedAllocator<amrex::Real> > > radial_pres;
-// #endif
-// #else
+#ifdef AMREX_USE_CUDA
+    amrex::Vector< amrex::Vector<amrex::Real, amrex::CudaManagedAllocator<amrex::Real> > > radial_grav_old;
+    amrex::Vector< amrex::Vector<amrex::Real, amrex::CudaManagedAllocator<amrex::Real> > > radial_grav_new;
+    amrex::Vector< amrex::Vector<amrex::Real, amrex::CudaManagedAllocator<amrex::Real> > > radial_mass;
+    amrex::Vector< amrex::Vector<amrex::Real, amrex::CudaManagedAllocator<amrex::Real> > > radial_vol;
+#ifdef GR_GRAV
+    amrex::Vector< amrex::Vector<amrex::Real, amrex::CudaManagedAllocator<amrex::Real> > > radial_pres;
+#endif
+#else
   static amrex::Vector< amrex::Vector<amrex::Real> > radial_grav_old;
   static amrex::Vector< amrex::Vector<amrex::Real> > radial_grav_new;
   static amrex::Vector< amrex::Vector<amrex::Real> > radial_mass;
@@ -352,7 +352,7 @@ protected:
 #ifdef GR_GRAV
   static amrex::Vector< amrex::Vector<amrex::Real> > radial_pres;
 #endif
-// #endif
+#endif
   static int   stencil_type;
 
   static amrex::Real max_radius_all_in_domain;
