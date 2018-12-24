@@ -138,18 +138,18 @@ extern "C"
 
   void ca_weight_cc
     (const int* lo, const int* hi,
-     BL_FORT_FAB_ARG(cc),
-     const amrex::Real* dx, const int* coord_type);
+     BL_FORT_FAB_ARG_3D(cc),
+     const amrex::Real* dx, const int coord_type);
 
   void ca_unweight_cc
     (const int* lo, const int* hi,
-     BL_FORT_FAB_ARG(cc),
-     const amrex::Real* dx, const int* coord_type);
+     BL_FORT_FAB_ARG_3D(cc),
+     const amrex::Real* dx, const int coord_type);
 
   void ca_unweight_edges
     (const int* lo, const int* hi,
-     BL_FORT_FAB_ARG(edge),
-     const amrex::Real* dx, const int* coord_type, const int* idir);
+     BL_FORT_FAB_ARG_3D(edge),
+     const amrex::Real* dx, const int coord_type, const int idir);
 
 
 #ifdef HYBRID_MOMENTUM
@@ -741,7 +741,7 @@ extern "C"
      const BL_FORT_FAB_ARG_3D(grav),
 #endif
      BL_FORT_FAB_ARG_3D(source),
-     const amrex::Real* dx, const amrex::Real& dt, const amrex::Real* time);
+     const amrex::Real* dx, const amrex::Real dt, const amrex::Real time);
 
   void ca_corrgsrc
     (const int* lo, const int* hi,

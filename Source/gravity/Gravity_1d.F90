@@ -21,7 +21,7 @@ contains
     integer , intent(in   ) :: lo(3),hi(3)
     integer , intent(in   ) :: rhlo(3), rhhi(3)
     integer , intent(in   ) :: ecxlo(3), ecxhi(3)
-    integer , value, intent(in   ) :: coord_type
+    integer , intent(in   ) :: coord_type
     real(rt), intent(inout) :: rhs(rhlo(1):rhhi(1),rhlo(2):rhhi(2),rhlo(3):rhhi(3))
     real(rt), intent(in   ) :: ecx(ecxlo(1):ecxhi(1),ecxlo(2):ecxhi(2),ecxlo(3):ecxhi(3))
     real(rt), intent(in   ) :: dx(3),problo(3)
@@ -37,8 +37,8 @@ contains
     if (coord_type .eq. 0) then
 
        do i=lo(1),hi(1)
-          lapphi = (ecx(i+1,j,k)-ecx(i,j,k))) / dx(1)
-          rhs(i,j,k)) = rhs(i,j,k)) - lapphi
+          lapphi = (ecx(i+1,j,k)-ecx(i,j,k)) / dx(1)
+          rhs(i,j,k) = rhs(i,j,k) - lapphi
        enddo
 
        ! r-z
@@ -48,8 +48,8 @@ contains
           rlo  = problo(1) + dble(i)*dx(1)
           rhi  = rlo + dx(1)
           rcen = HALF * (rlo+rhi)
-          lapphi = (rhi*ecx(i+1,j,k))-rlo*ecx(i,j,k))) / (rcen*dx(1))
-          rhs(i,j,k)) = rhs(i,j,k)) - lapphi
+          lapphi = (rhi*ecx(i+1,j,k)-rlo*ecx(i,j,k)) / (rcen*dx(1))
+          rhs(i,j,k) = rhs(i,j,k) - lapphi
        enddo
 
        ! spherical
@@ -59,8 +59,8 @@ contains
           rlo  = problo(1) + dble(i)*dx(1)
           rhi  = rlo + dx(1)
           rcen = HALF * (rlo+rhi)
-          lapphi = (rhi**2 * ecx(i+1,j,k))-rlo**2 * ecx(i,j,k))) / (rcen**2 * dx(1))
-          rhs(i,j,k)) = rhs(i,j,k)) - lapphi
+          lapphi = (rhi**2 * ecx(i+1,j,k)-rlo**2 * ecx(i,j,k)) / (rcen**2 * dx(1))
+          rhs(i,j,k) = rhs(i,j,k) - lapphi
        enddo
 
     else
@@ -73,7 +73,7 @@ contains
 
 
   subroutine ca_compute_radial_mass (lo,hi,dx,dr,&
-                                     state,r_l1,r_h1, &
+                                     state,r_lo,r_hi, &
                                      radial_mass,radial_vol,problo, &
                                      n1d,drdxfac,level) bind(C, name="ca_compute_radial_mass")
 
@@ -84,23 +84,25 @@ contains
     use amrex_fort_module, only : rt => amrex_real
     implicit none
 
-    integer , intent(in   ) :: lo(1), hi(1)
-    real(rt), intent(in   ) :: dx(1), dr
-    real(rt), intent(in   ) :: problo(1)
+    integer , intent(in   ) :: lo(3),hi(3)
+    integer , intent(in   ) :: r_lo(3),r_hi(3)
+    real(rt), intent(in   ) :: dx(3)
+    real(rt), value, intent(in   ) :: dr
+    real(rt), intent(in   ) :: problo(3)
 
-    integer , intent(in   ) :: n1d, drdxfac, level
+    integer , value, intent(in   ) :: n1d,drdxfac,level
     real(rt), intent(inout) :: radial_mass(0:n1d-1)
     real(rt), intent(inout) :: radial_vol (0:n1d-1)
 
-    integer , intent(in   ) :: r_l1, r_h1
-    real(rt), intent(in   ) :: state(r_l1:r_h1,NVAR)
+    real(rt), intent(in   ) :: state(r_lo(1):r_hi(1),r_lo(2):r_hi(2),r_lo(3):r_hi(3),NVAR)
 
-    integer          :: i, index
+    integer          :: i, j, k, index
     integer          :: ii
     real(rt)         :: r
     real(rt)         :: dx_frac, fac, vol
     real(rt)         :: lo_i, rlo, rhi
 
+#ifndef AMREX_USE_CUDA
     if (physbc_lo(1) .ne. Symmetry) then
        call amrex_error("Error: Gravity_1d.f90 :: 1D gravity assumes symmetric lower boundary.")
     endif
@@ -108,9 +110,12 @@ contains
     if (coord_type .ne. 2) then
        call amrex_error("Error: Gravity_1d.f90 :: 1D gravity assumes spherical coordinates.")
     endif
+#endif
 
     fac = dble(drdxfac)
     dx_frac = dx(1) / fac
+    j = lo(2)
+    k = lo(3)
 
     do i = lo(1), hi(1)
 
@@ -119,7 +124,7 @@ contains
        index = int(r / dr)
 
        if (index .gt. n1d-1) then
-
+#ifndef AMREX_USE_CUDA
           if (level .eq. 0) then
              print *,'   '
              print *,'>>> Error: Gravity_1d::ca_compute_radial_mass ', i
@@ -128,7 +133,7 @@ contains
              print *,'    '
              call amrex_error("Error:: Gravity_1d.f90 :: ca_compute_radial_mass")
           end if
-
+#endif
        else
 
           ! Note that we assume we are in spherical coordinates in 1D or we wouldn't be
@@ -147,7 +152,7 @@ contains
              index = int(r / dr)
 
              if (index .le. n1d-1) then
-                radial_mass(index) = radial_mass(index) + vol * state(i,URHO)
+                radial_mass(index) = radial_mass(index) + vol * state(i,j,k,URHO)
                 radial_vol (index) = radial_vol (index) + vol
              end if
 
