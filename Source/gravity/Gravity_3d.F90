@@ -182,7 +182,7 @@ contains
     real(rt)         :: cen,xi,slope,glo,gmd,ghi,minvar,maxvar
 
     !$gpu
-    
+
     !
     ! Note that we are interpolating onto the entire range of grav,
     ! including the ghost cells.
@@ -257,7 +257,7 @@ contains
 
 
   subroutine ca_put_radial_phi (lo,hi,domlo,domhi,dx,dr,&
-       phi,p_l1,p_l2,p_l3,p_h1,p_h2,p_h3, &
+       phi,p_lo,p_hi, &
        radial_phi,problo,&
        numpts_1d,fill_interior) bind(C, name="ca_put_radial_phi")
 
@@ -269,19 +269,23 @@ contains
 
     integer , intent(in   ) :: lo(3),hi(3)
     integer , intent(in   ) :: domlo(3),domhi(3)
-    real(rt), intent(in   ) :: dx(3),dr
+    real(rt), intent(in   ) :: dx(3)
+    real(rt), value, intent(in   ) :: dr
     real(rt), intent(in   ) :: problo(3)
 
-    integer , intent(in   ) :: numpts_1d
+    integer , value, intent(in   ) :: numpts_1d
     real(rt), intent(in   ) :: radial_phi(0:numpts_1d-1)
-    integer , intent(in   ) :: fill_interior
+    integer , value, intent(in   ) :: fill_interior
 
-    integer , intent(in   ) :: p_l1,p_l2,p_l3,p_h1,p_h2,p_h3
-    real(rt), intent(inout) :: phi(p_l1:p_h1,p_l2:p_h2,p_l3:p_h3)
+    integer , intent(in   ) :: p_lo(3),p_hi(3)
+    real(rt), intent(inout) :: phi(p_lo(1):p_hi(1),p_lo(2):p_hi(2),p_lo(3):p_hi(3))
 
     integer          :: i,j,k,index
     real(rt)         :: x,y,z,r
-    real(rt)         :: cen,xi,slope,p_lo,p_md,p_hi,minvar,maxvar
+    real(rt)         :: cen,xi,slope,ph_lo,p_md,ph_hi,minvar,maxvar
+
+    !$gpu
+
     !
     ! Note that when we interpolate into the ghost cells we use the
     ! location of the edge, not the cell center
@@ -316,12 +320,14 @@ contains
              r     = sqrt( x**2 + y**2 + z**2 )
              index = int(r/dr)
 
+#ifndef AMREX_USE_CUDA
              if (index .gt. numpts_1d-1) then
                 print *,'PUT_RADIAL_PHI: INDEX TOO BIG ',index,' > ',numpts_1d-1
                 print *,'AT (i,j) ',i,j,k
                 print *,'R / DR IS ',r,dr
                 call amrex_error("Error:: Gravity_3d.f90 :: ca_put_radial_phi")
              end if
+#endif
 
              if ( (fill_interior .eq. 1) .or. &
                   ( i.lt.domlo(1).or.i.gt.domhi(1)  .or. &
@@ -345,15 +351,15 @@ contains
                    !
                    ! Quadratic interpolation
                    !
-                   p_hi = radial_phi(index+1)
+                   ph_hi = radial_phi(index+1)
                    p_md = radial_phi(index  )
-                   p_lo = radial_phi(index-1)
+                   ph_lo = radial_phi(index-1)
                    phi(i,j,k) = &
-                        ( p_hi -   TWO*p_md + p_lo)*xi**2/(TWO*dr**2) + &
-                        ( p_hi       - p_lo      )*xi    /(TWO*dr   ) + &
-                        (-p_hi + 26.e0_rt*p_md - p_lo)/24.e0_rt
-                   minvar     = min(p_md, min(p_lo,p_hi))
-                   maxvar     = max(p_md, max(p_lo,p_hi))
+                        ( ph_hi -   TWO*p_md + ph_lo)*xi**2/(TWO*dr**2) + &
+                        ( ph_hi       - ph_lo      )*xi    /(TWO*dr   ) + &
+                        (-ph_hi + 26.e0_rt*p_md - ph_lo)/24.e0_rt
+                   minvar     = min(p_md, min(ph_lo,ph_hi))
+                   maxvar     = max(p_md, max(ph_lo,ph_hi))
                    phi(i,j,k) = max(phi(i,j,k),minvar)
                    phi(i,j,k) = min(phi(i,j,k),maxvar)
                 end if

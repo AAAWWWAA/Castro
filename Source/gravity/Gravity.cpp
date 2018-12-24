@@ -1449,11 +1449,12 @@ Gravity::make_radial_phi(int level, const MultiFab& Rhs, MultiFab& phi, int fill
     for (MFIter mfi(phi,true); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.growntilebox();
-        ca_put_radial_phi(bx.loVect(), bx.hiVect(),
-			  domain.loVect(), domain.hiVect(),
-			  dx,&dr, BL_TO_FORTRAN(phi[mfi]),
-			  radial_phi.dataPtr(),geom.ProbLo(),
-			  &n1d,&fill_interior);
+#pragma gpu
+        ca_put_radial_phi(AMREX_INT_ANYD(bx.loVect()), AMREX_INT_ANYD(bx.hiVect()),
+			  AMREX_INT_ANYD(domain.loVect()), AMREX_INT_ANYD(domain.hiVect()),
+			  AMREX_REAL_ANYD(dx),dr, BL_TO_FORTRAN_ANYD(phi[mfi]),
+			  radial_phi.dataPtr(),AMREX_REAL_ANYD(geom.ProbLo()),
+			  n1d,fill_interior);
     }
 
     if (verbose)
@@ -2022,7 +2023,7 @@ Gravity::unweight_cc(int level, MultiFab& cc)
         const Box& bx = mfi.tilebox();
 #pragma gpu
         ca_unweight_cc(AMREX_INT_ANYD(bx.loVect()), AMREX_INT_ANYD(bx.hiVect()),
-		       BL_TO_FORTRAN_ANYD(cc[mfi]),dx,coord_type);
+		       BL_TO_FORTRAN_ANYD(cc[mfi]),AMREX_REAL_ANYD(dx),coord_type);
     }
 }
 
@@ -2042,7 +2043,7 @@ Gravity::unweight_edges(int level, const Vector<MultiFab*>& edges)
 	    ca_unweight_edges(AMREX_INT_ANYD(bx.loVect()),
                   AMREX_INT_ANYD(bx.hiVect()),
 			      BL_TO_FORTRAN_ANYD((*edges[idir])[mfi]),
-			      dx,coord_type,idir);
+			      AMREX_REAL_ANYD(dx),coord_type,idir);
 	}
     }
 }
