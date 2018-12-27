@@ -2508,13 +2508,13 @@ Castro::reflux(int crse_level, int fine_level)
 
     if (update_sources_after_reflux) {
 
-	for (int lev = fine_level; lev >= crse_level; --lev) {
+        for (int lev = fine_level; lev >= crse_level; --lev) {
 
             MultiFab& S_old = getLevel(lev).get_old_data(State_Type);
-	    MultiFab& S_new = getLevel(lev).get_new_data(State_Type);
+            MultiFab& S_new = getLevel(lev).get_new_data(State_Type);
             MultiFab& source = getLevel(lev).get_new_data(Source_Type);
-	    Real time = getLevel(lev).state[State_Type].curTime();
-	    Real dt_advance = getLevel(lev).dt_advance; // Note that this may be shorter than the full timestep due to subcycling.
+            Real time = getLevel(lev).state[State_Type].curTime();
+            Real dt_advance = getLevel(lev).dt_advance; // Note that this may be shorter than the full timestep due to subcycling.
             Real dt_amr = parent->dtLevel(lev); // The full timestep expected by the Amr class.
 
             if (getLevel(lev).apply_sources()) {
@@ -2610,38 +2610,38 @@ Castro::reflux(int crse_level, int fine_level)
 void
 Castro::avgDown ()
 {
-    BL_PROFILE("Castro::avgDown()");
+	BL_PROFILE("Castro::avgDown()");
 
-  if (level == parent->finestLevel()) return;
+	if (level == parent->finestLevel()) return;
 
-  avgDown(State_Type);
+	avgDown(State_Type);
 
 #ifdef SELF_GRAVITY
-  avgDown(Gravity_Type);
-  avgDown(PhiGrav_Type);
+	avgDown(Gravity_Type);
+	avgDown(PhiGrav_Type);
 #endif
 
 #ifdef ROTATION
-  avgDown(Rotation_Type);
-  avgDown(PhiRot_Type);
+	avgDown(Rotation_Type);
+	avgDown(PhiRot_Type);
 #endif
 
-  avgDown(Source_Type);
+	avgDown(Source_Type);
 
 #ifdef REACTIONS
-  avgDown(Reactions_Type);
+	avgDown(Reactions_Type);
 #endif
 
 #ifdef SDC
 #ifdef REACTIONS
-  avgDown(SDC_React_Type);
+	avgDown(SDC_React_Type);
 #endif
 #endif
 
 #ifdef RADIATION
-  if (do_radiation) {
-    avgDown(Rad_Type);
-  }
+	if (do_radiation) {
+		avgDown(Rad_Type);
+	}
 #endif
 
 }
@@ -2706,11 +2706,11 @@ Castro::enforce_min_density (MultiFab& S_old, MultiFab& S_new, int ng)
     if (print_update_diagnostics)
     {
 
-	// Before we do anything, make a copy of the state.
+    	// Before we do anything, make a copy of the state.
 
-	reset_source.define(S_new.boxArray(), S_new.DistributionMap(), S_new.nComp(), 0);
+    	reset_source.define(S_new.boxArray(), S_new.DistributionMap(), S_new.nComp(), 0);
 
-	MultiFab::Copy(reset_source, S_new, 0, 0, S_new.nComp(), 0);
+    	MultiFab::Copy(reset_source, S_new, 0, 0, S_new.nComp(), 0);
 
     }
 

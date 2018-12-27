@@ -201,7 +201,7 @@ contains
     j = lo(2)
     k = lo(3)
 
-    grav(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),1:3) = ZERO
+    grav(lo(1):hi(1),j,k,1) = ZERO
 
     do i = lo(1), hi(1)
 

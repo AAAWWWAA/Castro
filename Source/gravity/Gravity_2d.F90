@@ -203,7 +203,7 @@ contains
 
     k = lo(3)
 
-    grav(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),1:3) = ZERO
+    grav(lo(1):hi(1),lo(2):hi(2),k,1:2) = ZERO
 
     do j = lo(2), hi(2)
        y = problo(2) + (dble(j)+HALF) * dx(2) - center(2)
