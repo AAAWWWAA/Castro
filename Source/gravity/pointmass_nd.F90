@@ -90,13 +90,16 @@
                                   uout_lo(3):uout_hi(3),NVAR)
       real(rt), intent(in) ::   vol(vol_lo(1):vol_hi(1),vol_lo(2):vol_hi(2), &
                                   vol_lo(3):vol_hi(3))
-      real(rt), intent(in) :: problo(3),dx(3),time,dt
+      real(rt), intent(in) :: problo(3),dx(3)
+      real(rt), value, intent(in) :: time,dt
 
       real(rt)           :: eps
       integer            :: ii,icen,istart,iend
       integer            :: jj,jcen,jstart,jend
       integer            :: kk,kcen,kstart,kend
       integer, parameter :: box_size = 2
+
+      !$gpu
 
       ! This is just a small number to keep precision issues from making
       !   icen,jcen,kcen one cell too low.
@@ -158,6 +161,8 @@
       integer            :: jj,jcen,jstart,jend
       integer            :: kk,kcen,kstart,kend
       integer, parameter :: box_size = 2
+
+      !$gpu
 
       ! This is just a small number to keep precision issues from making
       !   icen,jcen,kcen one cell too low.

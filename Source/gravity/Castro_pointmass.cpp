@@ -24,14 +24,14 @@ Castro::pointmass_update(Real time, Real dt)
         for (MFIter mfi(S_new, true); mfi.isValid(); ++mfi) {
 
 	    const Box& bx = mfi.tilebox();
-
-	    pm_compute_delta_mass(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
-                                  &mass_change_at_center,
+#pragma gpu
+	    pm_compute_delta_mass(AMREX_INT_ANYD(bx.loVect()), AMREX_INT_ANYD(bx.hiVect()),
+                          AMREX_MFITER_REDUCE_SUM(&mass_change_at_center),
 				  BL_TO_FORTRAN_ANYD(S_old[mfi]),
 				  BL_TO_FORTRAN_ANYD(S_new[mfi]),
 				  BL_TO_FORTRAN_ANYD(volume[mfi]),
-				  ZFILL(geom.ProbLo()), ZFILL(dx),
-				  &time, &dt);
+				  AMREX_REAL_ANYD(geom.ProbLo()), AMREX_REAL_ANYD(dx),
+				  time, dt);
 
 	}
 
