@@ -257,15 +257,13 @@ Castro::do_advance (Real time,
 
     if (do_hydro)
     {
-      // Construct the primitive variables.
-      cons_to_prim(time);
 
       // Check for CFL violations.
-      check_for_cfl_violation(dt);
+      // check_for_cfl_violation(dt);
 
       // If we detect one, return immediately.
-      if (cfl_violation && hard_cfl_limit)
-          return dt;
+      // if (cfl_violation && hard_cfl_limit)
+      //     return dt;
 
       construct_hydro_source(time, dt);
       int is_new=1;
@@ -879,14 +877,15 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
 
     // Allocate space for the primitive variables.
 
-    q.define(grids, dmap, NQ, NUM_GROW);
-    q.setVal(0.0);
-    qaux.define(grids, dmap, NQAUX, NUM_GROW);
-    if (time_integration_method == CornerTransportUpwind)
-      src_q.define(grids, dmap, QVAR, NUM_GROW);
-    if (fourth_order) {
-      q_bar.define(grids, dmap, NQ, NUM_GROW);
-      qaux_bar.define(grids, dmap, NQAUX, NUM_GROW);
+    if (time_integration_method != CornerTransportUpwind) {
+        q.define(grids, dmap, NQ, NUM_GROW);
+        q.setVal(0.0);
+        qaux.define(grids, dmap, NQAUX, NUM_GROW);
+        src_q.define(grids, dmap, QVAR, NUM_GROW);
+        if (fourth_order) {
+            q_bar.define(grids, dmap, NQ, NUM_GROW);
+            qaux_bar.define(grids, dmap, NQAUX, NUM_GROW);
+        }
     }
 
     if (time_integration_method == MethodOfLines) {

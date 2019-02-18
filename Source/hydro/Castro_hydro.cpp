@@ -40,6 +40,16 @@ Castro::construct_hydro_source(Real time, Real dt)
   }
 
   int nstep_fsp = -1;
+
+  AmrLevel::FillPatch(*this, Erborder, NUM_GROW, time, Rad_Type, 0, Radiation::nGroups);
+
+  MultiFab lamborder(grids, dmap, Radiation::nGroups, NUM_GROW);
+  if (radiation->pure_hydro) {
+      lamborder.setVal(0.0, NUM_GROW);
+  }
+  else {
+      radiation->compute_limiter(level, grids, Sborder, Erborder, lamborder);
+  }
 #endif
 
   Real mass_lost = 0.;
@@ -119,10 +129,77 @@ Castro::construct_hydro_source(Real time, Real dt)
 #endif
     FArrayBox pdivu;
 
+    FArrayBox q, qaux, src_q;
+
+    MultiFab& S_new = get_new_data(State_Type);
+
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
     for (MFIter mfi(S_new, hydro_tile_size); mfi.isValid(); ++mfi) {
 
       // the valid region box
       const Box& bx = mfi.tilebox();
+
+      const Box& qbx = mfi.growntilebox(NUM_GROW);
+
+      q.resize(qbx, NQ);
+      Elixir elix_q = q.elixir();
+
+      qaux.resize(qbx, NQAUX);
+      Elixir elix_qaux = qaux.elixir();
+
+      src_q.resize(qbx, QVAR);
+      Elixir elix_src_q = src_q.elixir();
+
+      // Convert the conservative state to the primitive variable state.
+      // This fills both q and qaux.
+
+#pragma gpu
+      ca_ctoprim(AMREX_INT_ANYD(qbx.loVect()), AMREX_INT_ANYD(qbx.hiVect()),
+                 BL_TO_FORTRAN_ANYD(Sborder[mfi]),
+#ifdef RADIATION
+                 BL_TO_FORTRAN_ANYD(Erborder[mfi]),
+                 BL_TO_FORTRAN_ANYD(lamborder[mfi]),
+#endif
+                 BL_TO_FORTRAN_ANYD(q),
+                 BL_TO_FORTRAN_ANYD(qaux));
+
+      // Convert the source terms expressed as sources to the conserved state to those
+      // expressed as sources for the primitive state.
+      if (time_integration_method == CornerTransportUpwind) {
+#pragma gpu
+          ca_srctoprim(BL_TO_FORTRAN_BOX(qbx),
+                       BL_TO_FORTRAN_ANYD(q),
+                       BL_TO_FORTRAN_ANYD(qaux),
+                       BL_TO_FORTRAN_ANYD(sources_for_hydro[mfi]),
+                       BL_TO_FORTRAN_ANYD(src_q));
+      }
+
+#ifndef RADIATION
+
+      // Add in the reactions source term; only done in SDC.
+
+#ifdef SDC
+#ifdef REACTIONS
+      MultiFab& SDC_react_source = get_new_data(SDC_React_Type);
+
+      if (do_react)
+          src_q[mfi].plus(SDC_react_source[mfi],qbx,qbx,0,0,QVAR);
+
+      if (do_react) {
+          react_src_arr = SDC_react_source.array(mfi);
+          src_q_arr = src_q[mfi].array();
+          const int numcomp = QVAR;
+
+          AMREX_PARALLEL_FOR_3D(qbx, numcomp, i, j, k, n,
+          {
+              src_q_arr(i,j,k,n) += react_src_arr(i,j,k,n);
+          });
+      }
+#endif
+#endif
+#endif
 
       const Box& obx = amrex::grow(bx, 1);
 
@@ -141,13 +218,13 @@ Castro::construct_hydro_source(Real time, Real dt)
       } else if (use_flattening == 1) {
 #ifdef RADIATION
         ca_rad_flatten(ARLIM_3D(obx.loVect()), ARLIM_3D(obx.hiVect()),
-                       BL_TO_FORTRAN_ANYD(q[mfi]),
+                       BL_TO_FORTRAN_ANYD(q),
                        BL_TO_FORTRAN_ANYD(flatn),
                        BL_TO_FORTRAN_ANYD(flatg));
 #else
 #pragma gpu
         ca_uflatten(AMREX_INT_ANYD(obx.loVect()), AMREX_INT_ANYD(obx.hiVect()),
-                    BL_TO_FORTRAN_ANYD(q[mfi]),
+                    BL_TO_FORTRAN_ANYD(q),
                     BL_TO_FORTRAN_ANYD(flatn), QPRES+1);
 #endif
       } else {
@@ -198,10 +275,10 @@ Castro::construct_hydro_source(Real time, Real dt)
 #pragma gpu
         ctu_plm_states(AMREX_INT_ANYD(obx.loVect()), AMREX_INT_ANYD(obx.hiVect()),
                        AMREX_INT_ANYD(bx.loVect()), AMREX_INT_ANYD(bx.hiVect()),
-                       BL_TO_FORTRAN_ANYD(q[mfi]),
+                       BL_TO_FORTRAN_ANYD(q),
                        BL_TO_FORTRAN_ANYD(flatn),
-                       BL_TO_FORTRAN_ANYD(qaux[mfi]),
-                       BL_TO_FORTRAN_ANYD(src_q[mfi]),
+                       BL_TO_FORTRAN_ANYD(qaux),
+                       BL_TO_FORTRAN_ANYD(src_q),
                        BL_TO_FORTRAN_ANYD(shk),
                        BL_TO_FORTRAN_ANYD(dq),
                        BL_TO_FORTRAN_ANYD(qxm),
@@ -249,10 +326,10 @@ Castro::construct_hydro_source(Real time, Real dt)
 #pragma gpu
         ctu_ppm_states(AMREX_INT_ANYD(obx.loVect()), AMREX_INT_ANYD(obx.hiVect()),
                        AMREX_INT_ANYD(bx.loVect()), AMREX_INT_ANYD(bx.hiVect()),
-                       BL_TO_FORTRAN_ANYD(q[mfi]),
+                       BL_TO_FORTRAN_ANYD(q),
                        BL_TO_FORTRAN_ANYD(flatn),
-                       BL_TO_FORTRAN_ANYD(qaux[mfi]),
-                       BL_TO_FORTRAN_ANYD(src_q[mfi]),
+                       BL_TO_FORTRAN_ANYD(qaux),
+                       BL_TO_FORTRAN_ANYD(src_q),
                        BL_TO_FORTRAN_ANYD(shk),
                        BL_TO_FORTRAN_ANYD(Ip),
                        BL_TO_FORTRAN_ANYD(Im),
@@ -285,7 +362,7 @@ Castro::construct_hydro_source(Real time, Real dt)
       // compute divu -- we'll use this later when doing the artifical viscosity
 #pragma gpu
       divu(AMREX_INT_ANYD(obx.loVect()), AMREX_INT_ANYD(obx.hiVect()),
-           BL_TO_FORTRAN_ANYD(q[mfi]),
+           BL_TO_FORTRAN_ANYD(q),
            AMREX_REAL_ANYD(dx),
            BL_TO_FORTRAN_ANYD(div));
 
@@ -353,7 +430,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                           BL_TO_FORTRAN_ANYD(lambda_int),
 #endif
                           BL_TO_FORTRAN_ANYD(qe[0]),
-                          BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                          BL_TO_FORTRAN_ANYD(qaux),
                           BL_TO_FORTRAN_ANYD(shk),
                           1, AMREX_INT_ANYD(domain_lo), AMREX_INT_ANYD(domain_hi));
 
@@ -415,7 +492,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                           BL_TO_FORTRAN_ANYD(lambda_int),
 #endif
                           BL_TO_FORTRAN_ANYD(qgdnvtmp1),
-                          BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                          BL_TO_FORTRAN_ANYD(qaux),
                           BL_TO_FORTRAN_ANYD(shk),
                           1, AMREX_INT_ANYD(domain_lo), AMREX_INT_ANYD(domain_hi));
 
@@ -436,7 +513,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                           BL_TO_FORTRAN_ANYD(lambda_int),
 #endif
                           BL_TO_FORTRAN_ANYD(qe[1]),
-                          BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                          BL_TO_FORTRAN_ANYD(qaux),
                           BL_TO_FORTRAN_ANYD(shk),
                           2, AMREX_INT_ANYD(domain_lo), AMREX_INT_ANYD(domain_hi));
 
@@ -451,7 +528,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                         BL_TO_FORTRAN_ANYD(ql),
                         BL_TO_FORTRAN_ANYD(qxp),
                         BL_TO_FORTRAN_ANYD(qr),
-                        BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                        BL_TO_FORTRAN_ANYD(qaux),
                         BL_TO_FORTRAN_ANYD(ftmp2),
 #ifdef RADIATION
                         BL_TO_FORTRAN_ANYD(rftmp2),
@@ -472,7 +549,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                           BL_TO_FORTRAN_ANYD(lambda_int),
 #endif
                           BL_TO_FORTRAN_ANYD(qe[0]),
-                          BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                          BL_TO_FORTRAN_ANYD(qaux),
                           BL_TO_FORTRAN_ANYD(shk),
                           1, AMREX_INT_ANYD(domain_lo), AMREX_INT_ANYD(domain_hi));
 
@@ -489,7 +566,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                         BL_TO_FORTRAN_ANYD(ql),
                         BL_TO_FORTRAN_ANYD(qyp),
                         BL_TO_FORTRAN_ANYD(qr),
-                        BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                        BL_TO_FORTRAN_ANYD(qaux),
                         BL_TO_FORTRAN_ANYD(ftmp1),
 #ifdef RADIATION
                         BL_TO_FORTRAN_ANYD(rftmp1),
@@ -512,7 +589,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                           BL_TO_FORTRAN_ANYD(lambda_int),
 #endif
                           BL_TO_FORTRAN_ANYD(qe[1]),
-                          BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                          BL_TO_FORTRAN_ANYD(qaux),
                           BL_TO_FORTRAN_ANYD(shk),
                           2, AMREX_INT_ANYD(domain_lo), AMREX_INT_ANYD(domain_hi));
 #endif // 2-d
@@ -549,7 +626,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                           BL_TO_FORTRAN_ANYD(lambda_int),
 #endif
                           BL_TO_FORTRAN_ANYD(qgdnvtmp1),
-                          BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                          BL_TO_FORTRAN_ANYD(qaux),
                           BL_TO_FORTRAN_ANYD(shk),
                           1, AMREX_INT_ANYD(domain_lo), AMREX_INT_ANYD(domain_hi));
 
@@ -571,7 +648,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                         BL_TO_FORTRAN_ANYD(qmyx),
                         BL_TO_FORTRAN_ANYD(qyp),
                         BL_TO_FORTRAN_ANYD(qpyx),
-                        BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                        BL_TO_FORTRAN_ANYD(qaux),
                         BL_TO_FORTRAN_ANYD(ftmp1),
 #ifdef RADIATION
                         BL_TO_FORTRAN_ANYD(rftmp1),
@@ -594,7 +671,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                         BL_TO_FORTRAN_ANYD(qmzx),
                         BL_TO_FORTRAN_ANYD(qzp),
                         BL_TO_FORTRAN_ANYD(qpzx),
-                        BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                        BL_TO_FORTRAN_ANYD(qaux),
                         BL_TO_FORTRAN_ANYD(ftmp1),
 #ifdef RADIATION
                         BL_TO_FORTRAN_ANYD(rftmp1),
@@ -620,7 +697,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                           BL_TO_FORTRAN_ANYD(lambda_int),
 #endif
                           BL_TO_FORTRAN_ANYD(qgdnvtmp1),
-                          BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                          BL_TO_FORTRAN_ANYD(qaux),
                           BL_TO_FORTRAN_ANYD(shk),
                           2, AMREX_INT_ANYD(domain_lo), AMREX_INT_ANYD(domain_hi));
 
@@ -642,7 +719,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                         BL_TO_FORTRAN_ANYD(qmxy),
                         BL_TO_FORTRAN_ANYD(qxp),
                         BL_TO_FORTRAN_ANYD(qpxy),
-                        BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                        BL_TO_FORTRAN_ANYD(qaux),
                         BL_TO_FORTRAN_ANYD(ftmp1),
 #ifdef RADIATION
                         BL_TO_FORTRAN_ANYD(rftmp1),
@@ -668,7 +745,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                         BL_TO_FORTRAN_ANYD(qmzy),
                         BL_TO_FORTRAN_ANYD(qzp),
                         BL_TO_FORTRAN_ANYD(qpzy),
-                        BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                        BL_TO_FORTRAN_ANYD(qaux),
                         BL_TO_FORTRAN_ANYD(ftmp1),
 #ifdef RADIATION
                         BL_TO_FORTRAN_ANYD(rftmp1),
@@ -694,7 +771,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                           BL_TO_FORTRAN_ANYD(lambda_int),
 #endif
                           BL_TO_FORTRAN_ANYD(qgdnvtmp1),
-                          BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                          BL_TO_FORTRAN_ANYD(qaux),
                           BL_TO_FORTRAN_ANYD(shk),
                           3, AMREX_INT_ANYD(domain_lo), AMREX_INT_ANYD(domain_hi));
 
@@ -716,7 +793,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                         BL_TO_FORTRAN_ANYD(qmxz),
                         BL_TO_FORTRAN_ANYD(qxp),
                         BL_TO_FORTRAN_ANYD(qpxz),
-                        BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                        BL_TO_FORTRAN_ANYD(qaux),
                         BL_TO_FORTRAN_ANYD(ftmp1),
 #ifdef RADIATION
                         BL_TO_FORTRAN_ANYD(rftmp1),
@@ -742,7 +819,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                         BL_TO_FORTRAN_ANYD(qmyz),
                         BL_TO_FORTRAN_ANYD(qyp),
                         BL_TO_FORTRAN_ANYD(qpyz),
-                        BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                        BL_TO_FORTRAN_ANYD(qaux),
                         BL_TO_FORTRAN_ANYD(ftmp1),
 #ifdef RADIATION
                         BL_TO_FORTRAN_ANYD(rftmp1),
@@ -774,7 +851,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                           BL_TO_FORTRAN_ANYD(lambda_int),
 #endif
                           BL_TO_FORTRAN_ANYD(qgdnvtmp1),
-                          BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                          BL_TO_FORTRAN_ANYD(qaux),
                           BL_TO_FORTRAN_ANYD(shk),
                           2, AMREX_INT_ANYD(domain_lo), AMREX_INT_ANYD(domain_hi));
 
@@ -796,7 +873,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                           BL_TO_FORTRAN_ANYD(lambda_int),
 #endif
                           BL_TO_FORTRAN_ANYD(qgdnvtmp2),
-                          BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                          BL_TO_FORTRAN_ANYD(qaux),
                           BL_TO_FORTRAN_ANYD(shk),
                           3, AMREX_INT_ANYD(domain_lo), AMREX_INT_ANYD(domain_hi));
 
@@ -809,7 +886,7 @@ Castro::construct_hydro_source(Real time, Real dt)
               BL_TO_FORTRAN_ANYD(ql),
               BL_TO_FORTRAN_ANYD(qxp),
               BL_TO_FORTRAN_ANYD(qr),
-              BL_TO_FORTRAN_ANYD(qaux[mfi]),
+              BL_TO_FORTRAN_ANYD(qaux),
               BL_TO_FORTRAN_ANYD(ftmp1),
 #ifdef RADIATION
               BL_TO_FORTRAN_ANYD(rftmp1),
@@ -833,7 +910,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                           BL_TO_FORTRAN_ANYD(lambda_int),
 #endif
                           BL_TO_FORTRAN_ANYD(qe[0]),
-                          BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                          BL_TO_FORTRAN_ANYD(qaux),
                           BL_TO_FORTRAN_ANYD(shk),
                           1, AMREX_INT_ANYD(domain_lo), AMREX_INT_ANYD(domain_hi));
 
@@ -859,7 +936,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                           BL_TO_FORTRAN_ANYD(lambda_int),
 #endif
                           BL_TO_FORTRAN_ANYD(qgdnvtmp1),
-                          BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                          BL_TO_FORTRAN_ANYD(qaux),
                           BL_TO_FORTRAN_ANYD(shk),
                           3, AMREX_INT_ANYD(domain_lo), AMREX_INT_ANYD(domain_hi));
 
@@ -881,7 +958,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                           BL_TO_FORTRAN_ANYD(lambda_int),
 #endif
                           BL_TO_FORTRAN_ANYD(qgdnvtmp2),
-                          BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                          BL_TO_FORTRAN_ANYD(qaux),
                           BL_TO_FORTRAN_ANYD(shk),
                           1, AMREX_INT_ANYD(domain_lo), AMREX_INT_ANYD(domain_hi));
 
@@ -894,7 +971,7 @@ Castro::construct_hydro_source(Real time, Real dt)
               BL_TO_FORTRAN_ANYD(ql),
               BL_TO_FORTRAN_ANYD(qyp),
               BL_TO_FORTRAN_ANYD(qr),
-              BL_TO_FORTRAN_ANYD(qaux[mfi]),
+              BL_TO_FORTRAN_ANYD(qaux),
               BL_TO_FORTRAN_ANYD(ftmp2),
 #ifdef RADIATION
               BL_TO_FORTRAN_ANYD(rftmp2),
@@ -920,7 +997,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                           BL_TO_FORTRAN_ANYD(lambda_int),
 #endif
                           BL_TO_FORTRAN_ANYD(qe[1]),
-                          BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                          BL_TO_FORTRAN_ANYD(qaux),
                           BL_TO_FORTRAN_ANYD(shk),
                           2, AMREX_INT_ANYD(domain_lo), AMREX_INT_ANYD(domain_hi));
 
@@ -946,7 +1023,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                           BL_TO_FORTRAN_ANYD(lambda_int),
 #endif
                           BL_TO_FORTRAN_ANYD(qgdnvtmp1),
-                          BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                          BL_TO_FORTRAN_ANYD(qaux),
                           BL_TO_FORTRAN_ANYD(shk),
                           1, AMREX_INT_ANYD(domain_lo), AMREX_INT_ANYD(domain_hi));
 
@@ -968,7 +1045,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                           BL_TO_FORTRAN_ANYD(lambda_int),
 #endif
                           BL_TO_FORTRAN_ANYD(qgdnvtmp2),
-                          BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                          BL_TO_FORTRAN_ANYD(qaux),
                           BL_TO_FORTRAN_ANYD(shk),
                           2, AMREX_INT_ANYD(domain_lo), AMREX_INT_ANYD(domain_hi));
 
@@ -981,7 +1058,7 @@ Castro::construct_hydro_source(Real time, Real dt)
               BL_TO_FORTRAN_ANYD(ql),
               BL_TO_FORTRAN_ANYD(qzp),
               BL_TO_FORTRAN_ANYD(qr),
-              BL_TO_FORTRAN_ANYD(qaux[mfi]),
+              BL_TO_FORTRAN_ANYD(qaux),
               BL_TO_FORTRAN_ANYD(ftmp1),
 #ifdef RADIATION
               BL_TO_FORTRAN_ANYD(rftmp1),
@@ -1008,7 +1085,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                           BL_TO_FORTRAN_ANYD(lambda_int),
 #endif
                           BL_TO_FORTRAN_ANYD(qe[2]),
-                          BL_TO_FORTRAN_ANYD(qaux[mfi]),
+                          BL_TO_FORTRAN_ANYD(qaux),
                           BL_TO_FORTRAN_ANYD(shk),
                           3, AMREX_INT_ANYD(domain_lo), AMREX_INT_ANYD(domain_hi));
 
@@ -1061,7 +1138,7 @@ Castro::construct_hydro_source(Real time, Real dt)
                   (AMREX_INT_ANYD(nbx.loVect()), AMREX_INT_ANYD(nbx.hiVect()),
                    idir_f,
                    BL_TO_FORTRAN_ANYD(Sborder[mfi]),
-                   BL_TO_FORTRAN_ANYD(q[mfi]),
+                   BL_TO_FORTRAN_ANYD(q),
                    BL_TO_FORTRAN_ANYD(volume[mfi]),
                    BL_TO_FORTRAN_ANYD(flux[idir]),
                    BL_TO_FORTRAN_ANYD(area[idir][mfi]),
@@ -1084,7 +1161,7 @@ Castro::construct_hydro_source(Real time, Real dt)
 #pragma gpu
       ctu_consup(AMREX_INT_ANYD(bx.loVect()), AMREX_INT_ANYD(bx.hiVect()),
                  BL_TO_FORTRAN_ANYD(Sborder[mfi]),
-                 BL_TO_FORTRAN_ANYD(q[mfi]),
+                 BL_TO_FORTRAN_ANYD(q),
                  BL_TO_FORTRAN_ANYD(shk),
                  BL_TO_FORTRAN_ANYD(S_new[mfi]),
                  BL_TO_FORTRAN_ANYD(hydro_source[mfi]),
