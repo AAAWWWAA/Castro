@@ -11,10 +11,10 @@ contains
     ! to the hybrid momenta.
 
     use meth_params_module, only: NVAR, UMR, UMP, UMX, UMZ
-    use castro_util_module, only: position
+    use castro_util_module, only: position ! function
     use prob_params_module, only: center
-
     use amrex_fort_module, only : rt => amrex_real
+
     implicit none
 
     integer, intent(in) :: lo(3), hi(3)
@@ -47,7 +47,7 @@ contains
     use amrex_constants_module, only: ONE
     use meth_params_module, only: NVAR, URHO, UMR, UML
     use prob_params_module, only: center
-    use castro_util_module, only: position
+    use castro_util_module, only: position ! function
     use network, only: nspec, naux
     use amrex_fort_module, only : rt => amrex_real
 
@@ -62,6 +62,8 @@ contains
 
     integer  :: i, j, k
     real(rt) :: loc(3), R, rhoInv
+
+    !$gpu
 
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
@@ -88,14 +90,16 @@ contains
     ! that has radial and angular components.
 
     use amrex_constants_module, only: ZERO
-
     use amrex_fort_module, only : rt => amrex_real
+
     implicit none
 
     real(rt)        , intent(in) :: loc(3), mom_in(3)
     real(rt)         :: mom_out(3)
 
     real(rt)         :: R
+
+    !$gpu
 
     R = sqrt( loc(1)**2 + loc(2)**2 )
 
@@ -120,14 +124,16 @@ contains
     ! Convert a "hybrid" momentum into a linear one.
 
     use amrex_constants_module, only: ZERO
-
     use amrex_fort_module, only : rt => amrex_real
+
     implicit none
 
     real(rt)        , intent(in) :: loc(3), mom_in(3)
     real(rt)         :: mom_out(3)
 
     real(rt)         :: R
+
+    !$gpu
 
     R = sqrt( loc(1)**2 + loc(2)**2 )
 
@@ -144,8 +150,8 @@ contains
   subroutine add_hybrid_momentum_source(loc, mom, source)
     ! Update hybrid momenta to account for source term to linear momenta.
 
-
     use amrex_fort_module, only : rt => amrex_real
+
     implicit none
 
     real(rt)        , intent(in   ) :: loc(3), source(3)
@@ -169,12 +175,15 @@ contains
   subroutine set_hybrid_momentum_source(loc, mom, source)
 
     use amrex_fort_module, only : rt => amrex_real
+
     implicit none
 
     real(rt), intent(in   ) :: loc(3), source(3)
     real(rt), intent(inout) :: mom(3)
 
     real(rt) :: R
+
+    !$gpu
 
     R = sqrt( loc(1)**2 + loc(2)**2 )
 
@@ -191,11 +200,13 @@ contains
   subroutine compute_hybrid_flux(state, flux, idir, idx, cell_centered)
 
     use meth_params_module, only: NVAR, NGDNV, GDRHO, GDU, GDV, GDW, GDPRES, UMR, UML, UMP
+#ifndef AMREX_USE_CUDA
     use amrex_error_module, only: amrex_error
+#endif
     use prob_params_module, only: center
-    use castro_util_module, only: position
-
+    use castro_util_module, only: position ! function
     use amrex_fort_module, only : rt => amrex_real
+
     implicit none
 
     real(rt)         :: state(NGDNV)
@@ -208,6 +219,8 @@ contains
 
     real(rt)         :: u_adv
     logical :: cc
+
+    !$gpu
 
     cc = .false.
 
@@ -275,10 +288,10 @@ contains
 
     use meth_params_module, only: NVAR, NGDNV, GDPRES, UMR
     use prob_params_module, only: center, dx_level
-    use castro_util_module, only: position
+    use castro_util_module, only: position ! function
     use amrinfo_module, only: amr_level
-
     use amrex_fort_module, only : rt => amrex_real
+
     implicit none
 
     integer          :: lo(3), hi(3)
@@ -294,6 +307,8 @@ contains
 
     integer          :: i, j, k
     real(rt)         :: loc(3), R, dx(3)
+
+    !$gpu
 
     dx = dx_level(:,amr_level)
 
@@ -321,10 +336,10 @@ contains
 
     use amrex_constants_module, only: HALF, ONE
     use meth_params_module, only: URHO, UMR, UMP, UMX, UMZ, UEDEN, NVAR
-    use castro_util_module, only: position
+    use castro_util_module, only: position ! function
     use prob_params_module, only: center
-
     use amrex_fort_module, only : rt => amrex_real
+
     implicit none
 
     integer, intent(in) :: lo(3), hi(3)
@@ -332,7 +347,9 @@ contains
     real(rt), intent(inout) :: state(state_lo(1):state_hi(1),state_lo(2):state_hi(2),state_lo(3):state_hi(3),NVAR)
 
     integer          :: i, j, k
-    real(rt)         :: loc(3)
+    real(rt)         :: loc(3), hybrid_mom(3)
+
+    !$gpu
 
     do k = lo(3), hi(3)
        do j = lo(2), hi(2)
@@ -340,7 +357,9 @@ contains
 
              loc = position(i,j,k) - center
 
-             state(i,j,k,UMX:UMZ) = hybrid_to_linear(loc, state(i,j,k,UMR:UMP))
+             hybrid_mom(:) = state(i,j,k,UMR:UMP)
+
+             state(i,j,k,UMX:UMZ) = hybrid_to_linear(loc, hybrid_mom)
 
           enddo
        enddo
