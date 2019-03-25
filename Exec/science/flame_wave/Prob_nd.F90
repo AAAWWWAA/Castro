@@ -56,6 +56,11 @@ subroutine amrex_probinit (init, name, namlen, problo, probhi) bind(c)
 
   allocate(x_half_max)
   allocate(x_half_width)
+  allocate(x_refine_distance)
+  allocate(X_min)
+  allocate(cutoff_density)
+  allocate(max_hse_tagging_level)
+  allocate(max_base_tagging_level)
 
   ! set namelist defaults here
   X_min = 1.e-4_rt

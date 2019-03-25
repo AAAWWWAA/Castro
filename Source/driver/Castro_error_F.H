@@ -154,6 +154,15 @@ extern "C"
      const amrex::Real* time, const int* level);
 
 #ifdef AMREX_DIMENSION_AGNOSTIC
+#ifdef GPU_COMPATIBLE_PROBLEM
+  void set_problem_tags
+    (const int* lo, const int* hi,
+     BL_FORT_IFAB_ARG_3D(tag),
+     const BL_FORT_FAB_ARG_3D(state),
+     const int tagval, const int clearval,
+     const amrex::Real* dx, const amrex::Real* problo,
+     const int level);
+#else
   void set_problem_tags
     (const int* lo, const int* hi,
      BL_FORT_IFAB_ARG_3D(tag),
@@ -161,6 +170,7 @@ extern "C"
      const int* tagval, const int* clearval,
      const amrex::Real* dx, const amrex::Real* problo,
      const amrex::Real* time, const int* level);
+#endif
 #else
   void set_problem_tags
     (const int* lo, const int* hi,

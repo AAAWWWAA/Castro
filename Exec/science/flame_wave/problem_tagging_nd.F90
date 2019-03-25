@@ -11,7 +11,7 @@ contains
   subroutine set_problem_tags(lo, hi, tag, tag_lo, tag_hi, &
                               state, state_lo, state_hi, &
                               set, clear,&
-                              dx, problo, time, level) bind(C, name="set_problem_tags")
+                              dx, problo, level) bind(C, name="set_problem_tags")
 
     use amrex_constants_module, only: HALF
     use meth_params_module, only: URHO, NVAR, UFS
@@ -26,11 +26,13 @@ contains
     integer,  intent(in   ) :: tag_lo(3), tag_hi(3)
     real(rt), intent(in   ) :: state(state_lo(1):state_hi(1),state_lo(2):state_hi(2),state_lo(3):state_hi(3),NVAR)
     integer,  intent(inout) :: tag(tag_lo(1):tag_hi(1),tag_lo(2):tag_hi(2),tag_lo(3):tag_hi(3))
-    real(rt), intent(in   ) :: problo(3), dx(3), time
-    integer,  intent(in   ) :: level, set, clear
+    real(rt), intent(in   ) :: dx(3), problo(3)
+    integer,  intent(in   ), value :: level, set, clear
 
     integer  :: i, j, k
     real(rt) :: x, xdist
+
+    !$gpu
 
     ! Tag on regions of with X > X_min and rho < cutoff_density.  Note
     ! that X is the first species variable and so is in index UFS of

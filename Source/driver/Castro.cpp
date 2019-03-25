@@ -3023,9 +3023,9 @@ Castro::apply_problem_tags (TagBoxArray& tags,
 #pragma omp parallel
 #endif
     {
-        Vector<int>  itags;
+        Vector<int, CudaManagedAllocator<int> >  itags;
 
-	for (MFIter mfi(S_new,true); mfi.isValid(); ++mfi)
+	for (MFIter mfi(S_new, TilingIfNotGPU()); mfi.isValid(); ++mfi)
 	{
 	    // tile box
 	    const Box&  tilebx  = mfi.tilebox();
@@ -3042,17 +3042,30 @@ Castro::apply_problem_tags (TagBoxArray& tags,
 	    const int*  thi     = tilebx.hiVect();
 
 #ifdef AMREX_DIMENSION_AGNOSTIC
+#ifdef GPU_COMPATIBLE_PROBLEM
+#pragma gpu
+            set_problem_tags(AMREX_INT_ANYD(tilebx.loVect()), AMREX_INT_ANYD(tilebx.hiVect()),
+                             tptr, AMREX_INT_ANYD(tlo), AMREX_INT_ANYD(thi),
+			     BL_TO_FORTRAN_ANYD(S_new[mfi]),
+			     tagval, clearval,
+			     AMREX_REAL_ANYD(dx), AMREX_REAL_ANYD(prob_lo), level);
+#else
 	    set_problem_tags(ARLIM_3D(tilebx.loVect()), ARLIM_3D(tilebx.hiVect()),
                              tptr, ARLIM_3D(tlo), ARLIM_3D(thi),
 			     BL_TO_FORTRAN_ANYD(S_new[mfi]),
 			     &tagval, &clearval,
 			     ZFILL(dx), ZFILL(prob_lo), &time, &level);
+#endif
 #else
 	    set_problem_tags(tilebx.loVect(), tilebx.hiVect(),
                              tptr, ARLIM(tlo), ARLIM(thi),
 			     BL_TO_FORTRAN(S_new[mfi]),
 			     &tagval, &clearval,
 		             dx, prob_lo, &time, &level);
+#endif
+
+#ifdef AMREX_USE_CUDA
+            amrex::Gpu::Device::streamSynchronize();
 #endif
 
 	    //
