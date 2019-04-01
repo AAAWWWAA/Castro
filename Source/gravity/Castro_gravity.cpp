@@ -280,9 +280,9 @@ void Castro::construct_new_gravity_source(MultiFab& source, MultiFab& state_old,
 #pragma omp parallel
 #endif
     {
-	for (MFIter mfi(state_new, true); mfi.isValid(); ++mfi)
+	for (MFIter mfi(state_new); mfi.isValid(); ++mfi)
 	{
-	    const Box& bx = mfi.tilebox();
+	    const Box& bx = mfi.validbox();
 
 #pragma gpu
 	    ca_corrgsrc(AMREX_INT_ANYD(bx.loVect()), AMREX_INT_ANYD(bx.hiVect()),
@@ -290,10 +290,14 @@ void Castro::construct_new_gravity_source(MultiFab& source, MultiFab& state_old,
 			BL_TO_FORTRAN_ANYD(state_old[mfi]),
 			BL_TO_FORTRAN_ANYD(state_new[mfi]),
 #ifdef SELF_GRAVITY
-			BL_TO_FORTRAN_ANYD(phi_old[mfi]),
-			BL_TO_FORTRAN_ANYD(phi_new[mfi]),
 			BL_TO_FORTRAN_ANYD(grav_old[mfi]),
 			BL_TO_FORTRAN_ANYD(grav_new[mfi]),
+			BL_TO_FORTRAN_ANYD((*gravity->get_grad_phi_prev(level)[0])[mfi]),
+                        BL_TO_FORTRAN_ANYD((*gravity->get_grad_phi_prev(level)[1])[mfi]),
+                        BL_TO_FORTRAN_ANYD((*gravity->get_grad_phi_prev(level)[2])[mfi]),
+			BL_TO_FORTRAN_ANYD((*gravity->get_grad_phi_curr(level)[0])[mfi]),
+                        BL_TO_FORTRAN_ANYD((*gravity->get_grad_phi_curr(level)[1])[mfi]),
+                        BL_TO_FORTRAN_ANYD((*gravity->get_grad_phi_curr(level)[2])[mfi]),
 #endif
 			BL_TO_FORTRAN_ANYD(volume[mfi]),
 			BL_TO_FORTRAN_ANYD((*mass_fluxes[0])[mfi]),

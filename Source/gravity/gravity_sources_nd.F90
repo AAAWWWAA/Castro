@@ -146,10 +146,14 @@ contains
                          uold, uo_lo, uo_hi, &
                          unew, un_lo, un_hi, &
 #ifdef SELF_GRAVITY
-                         pold, po_lo, po_hi, &
-                         pnew, pn_lo, pn_hi, &
                          gold, go_lo, go_hi, &
                          gnew, gn_lo, gn_hi, &
+                         gxold, xo_lo, xo_hi, &
+                         gxnew, xn_lo, xn_hi, &
+                         gyold, yo_lo, yo_hi, &
+                         gynew, yn_lo, yn_hi, &
+                         gzold, zo_lo, zo_hi, &
+                         gznew, zn_lo, zn_hi, &
 #endif
                          vol, vol_lo, vol_hi, &
                          flux1, f1_lo, f1_hi, &
@@ -184,10 +188,14 @@ contains
     integer,  intent(in   ) :: uo_lo(3), uo_hi(3)
     integer,  intent(in   ) :: un_lo(3), un_hi(3)
 #ifdef SELF_GRAVITY
-    integer,  intent(in   ) :: po_lo(3), po_hi(3)
-    integer,  intent(in   ) :: pn_lo(3), pn_hi(3)
     integer,  intent(in   ) :: go_lo(3), go_hi(3)
     integer,  intent(in   ) :: gn_lo(3), gn_hi(3)
+    integer,  intent(in   ) :: xo_lo(3), xo_hi(3)
+    integer,  intent(in   ) :: xn_lo(3), xn_hi(3)
+    integer,  intent(in   ) :: yo_lo(3), yo_hi(3)
+    integer,  intent(in   ) :: yn_lo(3), yn_hi(3)
+    integer,  intent(in   ) :: zo_lo(3), zo_hi(3)
+    integer,  intent(in   ) :: zn_lo(3), zn_hi(3)
 #endif
     integer,  intent(in   ) :: vol_lo(3), vol_hi(3)
     integer,  intent(in   ) :: f1_lo(3), f1_hi(3)
@@ -202,15 +210,19 @@ contains
     real(rt), intent(in   ) :: unew(un_lo(1):un_hi(1),un_lo(2):un_hi(2),un_lo(3):un_hi(3),NVAR)
 
 #ifdef SELF_GRAVITY
-    ! Old and new time gravitational potential
-
-    real(rt), intent(in   ) :: pold(po_lo(1):po_hi(1),po_lo(2):po_hi(2),po_lo(3):po_hi(3))
-    real(rt), intent(in   ) :: pnew(pn_lo(1):pn_hi(1),pn_lo(2):pn_hi(2),pn_lo(3):pn_hi(3))
-
-    ! Old and new time gravitational acceleration
+    ! Old and new time gravitational acceleration, cell-centered
 
     real(rt), intent(in   ) :: gold(go_lo(1):go_hi(1),go_lo(2):go_hi(2),go_lo(3):go_hi(3),3)
     real(rt), intent(in   ) :: gnew(gn_lo(1):gn_hi(1),gn_lo(2):gn_hi(2),gn_lo(3):gn_hi(3),3)
+
+    ! Old and new time gravitational acceleration, edge-centered
+
+    real(rt), intent(in   ) :: gxold(xo_lo(1):xo_hi(1),xo_lo(2):xo_hi(2),xo_lo(3):xo_hi(3))
+    real(rt), intent(in   ) :: gxnew(xn_lo(1):xn_hi(1),xn_lo(2):xn_hi(2),xn_lo(3):xn_hi(3))
+    real(rt), intent(in   ) :: gyold(yo_lo(1):yo_hi(1),yo_lo(2):yo_hi(2),yo_lo(3):yo_hi(3))
+    real(rt), intent(in   ) :: gynew(yn_lo(1):yn_hi(1),yn_lo(2):yn_hi(2),yn_lo(3):yn_hi(3))
+    real(rt), intent(in   ) :: gzold(zo_lo(1):zo_hi(1),zo_lo(2):zo_hi(2),zo_lo(3):zo_hi(3))
+    real(rt), intent(in   ) :: gznew(zn_lo(1):zn_hi(1),zn_lo(2):zn_hi(2),zn_lo(3):zn_hi(3))
 #endif
 
     ! Cell volume
@@ -243,7 +255,7 @@ contains
     real(rt) :: hdtInv
 
     real(rt) :: phi, phixl, phixr, phiyl, phiyr, phizl, phizr
-    real(rt) :: g(3), gxl, gxr, gyl, gyr, gzl, gzr
+    real(rt) :: g(3), gl(3), gr(3)
 
     real(rt) :: src(NVAR)
 
@@ -325,110 +337,40 @@ contains
              ! The main idea is that we are evaluating the change of the
              ! potential energy at zone edges and applying that in an equal
              ! and opposite sense to the gas energy. The physics is described
-             ! in Section 2.4; the particular form of the equation we are using
-             ! is found in Appendix B, as it provides the best numerical conservation
-             ! properties when using AMR.
+             ! in Section 2.4. We use a slightly different formulation than
+             ! listed in the paper, which relies on the (second-order) property:
+             ! g_{i+1/2} = -( phi_{i+1} - phi_{i} ) / dx.
 
 #ifdef SELF_GRAVITY
-             if (gravity_type_int == 2 .or. (gravity_type_int == 1 .and. get_g_from_phi == 1) ) then ! Poisson and monopole, respectively
 
-                ! For our purposes, we want the time-level n+1/2 phi because we are
-                ! using fluxes evaluated at that time. To second order we can
-                ! average the new and old potentials.
+             ! Construct the time-averaged edge-centered gravity.
+             ! Note that what comes in grad(phi) so we need to negate it.
 
-                phi = HALF * (pnew(i,j,k) + pold(i,j,k))
-                phixl = HALF * (pnew(i-1*dg(1),j,k) + pold(i-1*dg(1),j,k))
-                phixr = HALF * (pnew(i+1*dg(1),j,k) + pold(i+1*dg(1),j,k))
-                phiyl = HALF * (pnew(i,j-1*dg(2),k) + pold(i,j-1*dg(2),k))
-                phiyr = HALF * (pnew(i,j+1*dg(2),k) + pold(i,j+1*dg(2),k))
-                phizl = HALF * (pnew(i,j,k-1*dg(3)) + pold(i,j,k-1*dg(3)))
-                phizr = HALF * (pnew(i,j,k+1*dg(3)) + pold(i,j,k+1*dg(3)))
+             gl(1) = -HALF * (gxold(i,        j,k) + gxnew(i,        j,k))
+             gr(1) = -HALF * (gxold(i+1*dg(1),j,k) + gxnew(i+1*dg(1),j,k))
 
-                ! We need to perform the following hack to deal with the fact that
-                ! the potential is defined on cell edges, not cell centers, for ghost
-                ! zones. We redefine the boundary zone values as equal to the adjacent
-                ! cell minus the original value. Then later when we do the adjacent zone
-                ! minus the boundary zone, we'll get the boundary value, which is what we want.
-                ! We don't need to reset this at the end because phi is a temporary array.
-                ! Note that this is needed for Poisson gravity only; the other gravity methods
-                ! generally define phi on cell centers even outside the domain.
-                ! Note also that we do not want to apply it on symmetry boundaries,
-                ! because in that case the value in the ghost zone is the cell-centered value.
-                ! We also want to skip the corners, because the potential is undefined there.
+             gl(2) = -HALF * (gyold(i,j        ,k) + gynew(i,j,        k))
+             gr(2) = -HALF * (gyold(i,j+1*dg(2),k) + gynew(i,j+1*dg(2),k))
 
-                if (gravity_type_int == 2) then ! Poisson
+             gl(3) = -HALF * (gzold(i,j,k        ) + gznew(i,j,k        ))
+             gr(3) = -HALF * (gzold(i,j,k+1*dg(3)) + gznew(i,j,k+1*dg(3)))
 
-                   if (i .eq. domlo(1) .and. physbc_lo(1) .ne. Symmetry) then
-                      phixl = phi - phixl
-                   endif
-                   if (i .eq. domhi(1) .and. physbc_hi(1) .ne. Symmetry) then
-                      phixr = phi - phixr
-                   endif
-                   if (j .eq. domlo(2) .and. physbc_lo(2) .ne. Symmetry) then
-                      phiyl = phi - phiyl
-                   endif
-                   if (j .eq. domhi(2) .and. physbc_hi(2) .ne. Symmetry) then
-                      phiyr = phi - phiyr
-                   endif
-                   if (k .eq. domlo(3) .and. physbc_lo(3) .ne. Symmetry) then
-                      phizl = phi - phizl
-                   endif
-                   if (k .eq. domhi(3) .and. physbc_hi(3) .ne. Symmetry) then
-                      phizr = phi - phizr
-                   endif
-
-                end if
-
-                SrEcorr = SrEcorr + (ONE / dt) * ((flux1(i        ,j,k) * HALF * (phixl + phi) - &
-                                                   flux1(i+1*dg(1),j,k) * HALF * (phixr + phi) + &
-                                                   flux2(i,j        ,k) * HALF * (phiyl + phi) - &
-                                                   flux2(i,j+1*dg(2),k) * HALF * (phiyr + phi) + &
-                                                   flux3(i,j,k        ) * HALF * (phizl + phi) - &
-                                                   flux3(i,j,k+1*dg(3)) * HALF * (phizr + phi)) / vol(i,j,k) - &
-                                                   (rhon - rhoo) * phi)
-
-             else
-
-                ! However, at present phi is usually only actually filled for Poisson gravity.
-                ! Here's an alternate version that only requires the use of the
-                ! gravitational acceleration. It relies on the concept that, to second order,
-                ! g_{i+1/2} = -( phi_{i+1} - phi_{i} ) / dx.
-
-                ! Construct the time-averaged edge-centered gravity.
-
-                g(:) = HALF * (gnew(i,j,k,:) + gold(i,j,k,:))
-
-                gxl = HALF * (g(1) + HALF * (gnew(i-1*dg(1),j,k,1) + gold(i-1*dg(1),j,k,1)))
-                gxr = HALF * (g(1) + HALF * (gnew(i+1*dg(1),j,k,1) + gold(i+1*dg(1),j,k,1)))
-
-                gyl = HALF * (g(2) + HALF * (gnew(i,j-1*dg(2),k,2) + gold(i,j-1*dg(2),k,2)))
-                gyr = HALF * (g(2) + HALF * (gnew(i,j+1*dg(2),k,2) + gold(i,j+1*dg(2),k,2)))
-
-                gzl = HALF * (g(3) + HALF * (gnew(i,j,k-1*dg(3),3) + gold(i,j,k-1*dg(3),3)))
-                gzr = HALF * (g(3) + HALF * (gnew(i,j,k+1*dg(3),3) + gold(i,j,k+1*dg(3),3)))
-
-                SrEcorr = SrEcorr + hdtInv * ( flux1(i        ,j,k) * gxl * dx(1) + &
-                                               flux1(i+1*dg(1),j,k) * gxr * dx(1) + &
-                                               flux2(i,j        ,k) * gyl * dx(2) + &
-                                               flux2(i,j+1*dg(2),k) * gyr * dx(2) + &
-                                               flux3(i,j,k        ) * gzl * dx(3) + &
-                                               flux3(i,j,k+1*dg(3)) * gzr * dx(3) ) / vol(i,j,k)
-
-             endif
 #else
-             ! For constant gravity, the only contribution is from the dimension that the gravity points in.
 
-             if (dim .eq. 1) then
-                SrEcorr = SrEcorr + (HALF / dt) * ( flux1(i        ,j,k) * const_grav * dx(1) + &
-                                                    flux1(i+1*dg(1),j,k) * const_grav * dx(1) ) / vol(i,j,k)
-             else if (dim .eq. 2) then
-                SrEcorr = SrEcorr + (HALF / dt) * ( flux2(i,j        ,k) * const_grav * dx(2) + &
-                                                    flux2(i,j+1*dg(2),k) * const_grav * dx(2) ) / vol(i,j,k)
-             else if (dim .eq. 3) then
-                SrEcorr = SrEcorr + (HALF / dt) * ( flux3(i,j,k        ) * const_grav * dx(3) + &
-                                                    flux3(i,j,k+1*dg(3)) * const_grav * dx(3) ) / vol(i,j,k)
-             end if
+             gl(:) = ZERO
+             gr(:) = ZERO
+
+             gl(dim) = const_grav
+             gr(dim) = const_grav
+
 #endif
+
+             SrEcorr = SrEcorr + hdtInv * ( flux1(i        ,j,k) * gl(1) * dx(1) + &
+                                            flux1(i+1*dg(1),j,k) * gr(1) * dx(1) + &
+                                            flux2(i,j        ,k) * gl(2) * dx(2) + &
+                                            flux2(i,j+1*dg(2),k) * gr(2) * dx(2) + &
+                                            flux3(i,j,k        ) * gl(3) * dx(3) + &
+                                            flux3(i,j,k+1*dg(3)) * gr(3) * dx(3) ) / vol(i,j,k)
 
              src(UEDEN) = SrEcorr
 

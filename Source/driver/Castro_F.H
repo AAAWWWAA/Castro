@@ -347,10 +347,14 @@ extern "C"
      const BL_FORT_FAB_ARG_3D(S_old),
      const BL_FORT_FAB_ARG_3D(S_new),
 #ifdef SELF_GRAVITY
-     const BL_FORT_FAB_ARG_3D(phi_old),
-     const BL_FORT_FAB_ARG_3D(phi_new),
      const BL_FORT_FAB_ARG_3D(grav_old),
      const BL_FORT_FAB_ARG_3D(grav_new),
+     const BL_FORT_FAB_ARG_3D(gxold),
+     const BL_FORT_FAB_ARG_3D(gxnew),
+     const BL_FORT_FAB_ARG_3D(gyold),
+     const BL_FORT_FAB_ARG_3D(gynew),
+     const BL_FORT_FAB_ARG_3D(gzold),
+     const BL_FORT_FAB_ARG_3D(gznew),
 #endif
      const BL_FORT_FAB_ARG_3D(volume),
      const BL_FORT_FAB_ARG_3D(xflux),
