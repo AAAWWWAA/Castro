@@ -723,38 +723,32 @@ contains
     ! P_{m+1}^m(x) = x (2m+1) P_m^m (x)
 
     do m = 1, lnum
+       do l = m, lnum
 
-       ! P_m^m
+          if (l == m) then
 
-       assocLegPolyArr(m,m) = (-1)**m * ( (ONE - x) * (ONE + x) )**(dble(m)/TWO)
+             assocLegPolyArr(l,m) = (-1)**m * ( (ONE - x) * (ONE + x) )**(dble(m)/TWO)
 
-       ! Multiply by the double factorial term
+             ! Multiply by the double factorial term
 
-       do n = (2*m-1), 3, -2
+             do n = (2*m-1), 3, -2
 
-          assocLegPolyArr(m,m) = assocLegPolyArr(m,m) * n
+                assocLegPolyArr(l,m) = assocLegPolyArr(l,m) * n
 
-       enddo
+             end do
 
-       ! P_{m+1}^m
-       ! We need to be careful at m = lnum, because we could reference a non-existent array subscript.
+          else if (l == m + 1) then
 
-       if ( m < lnum ) then
+             assocLegPolyArr(l,m) = x * (2*m + 1) * assocLegPolyArr(l-1,m)
 
-          assocLegPolyArr(m+1,m) = x * (2*m + 1) * assocLegPolyArr(m,m)
+          else
 
-       endif
+             assocLegPolyArr(l,m) = (x * (2*l - 1) * assocLegPolyArr(l-1,m) - (l + m - 1) * assocLegPolyArr(l-2,m) ) / (l-m)
 
-       ! All other l
-       ! The loop will automatically be avoided if we're close to lnum here.
+          end if
 
-       do l = m+2, lnum
-
-          assocLegPolyArr(l,m) = (x * (2*l - 1) * assocLegPolyArr(l-1,m) - (l + m - 1) * assocLegPolyArr(l-2,m) ) / (l-m)
-
-       enddo
-
-    enddo
+       end do
+    end do
 
 
     ! Now we'll do the normal Legendre polynomials. We use a stable recurrence relation:
