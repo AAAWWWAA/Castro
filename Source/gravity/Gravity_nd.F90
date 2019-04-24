@@ -709,6 +709,8 @@ contains
     real(rt) :: x
     real(rt) :: legPolyArr(0:lnum), assocLegPolyArr(0:lnum,0:lnum)
 
+    real(rt) :: legPolyL, legPolyL1, legPolyL2
+
     legPolyArr(:)        = ZERO
     assocLegPolyArr(:,:) = ZERO
 
@@ -761,24 +763,47 @@ contains
     ! P_1(x) = x
 
     do l = 0, lnum
-
-       if ( l == 0 ) then
-
-          legPolyArr(0) = ONE
-
-       elseif ( l == 1 ) then
-
-          legPolyArr(1) = x
-
-       else
-
-          legPolyArr(l) = ( (2*l - 1) * x * legPolyArr(l-1) - (l-1) * legPolyArr(l-2) ) / l
-
-       endif
-
-    enddo
+       call calcLegPolyL(l, legPolyL, legPolyL1, legPolyL2, x)
+       legPolyArr(l) = legPolyL
+    end do
 
   end subroutine fill_legendre_arrays
+
+
+  subroutine calcLegPolyL(l, legPolyL, legPolyL1, legPolyL2, x)
+
+    use amrex_constants_module, only: ONE
+
+    implicit none
+
+    integer,  intent(in   ) :: l
+    real(rt), intent(inout) :: legPolyL, legPolyL1, legPolyL2
+    real(rt), intent(in   ) :: x
+
+    ! Calculate the Legendre polynomials. We use a stable recurrence relation:
+    ! (l+1) P_{l+1}(x) = (2l+1) x P_l(x) - l P_{l-1}(x).
+    ! This uses initial conditions:
+    ! P_0(x) = 1
+    ! P_1(x) = x
+
+    if (l == 0) then
+
+       legPolyL = ONE
+
+    elseif (l == 1) then
+
+       legPolyL1 = legPolyL
+       legPolyL  = x
+
+    else
+
+       legPolyL2 = legPolyL1
+       legPolyL1 = legPolyL
+       legPolyL  = ((2*l - 1) * x * legPolyL1 - (l-1) * legPolyL2) / l
+
+    end if
+
+  end subroutine calcLegPolyL
 
 
   subroutine multipole_symmetric_add(doSymmetricAddLo, doSymmetricAddHi, &
