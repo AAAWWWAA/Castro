@@ -710,6 +710,7 @@ contains
     real(rt) :: legPolyArr(0:lnum), assocLegPolyArr(0:lnum,0:lnum)
 
     real(rt) :: legPolyL, legPolyL1, legPolyL2
+    real(rt) :: assocLegPolyLM, assocLegPolyLM1, assocLegPolyLM2
 
     legPolyArr(:)        = ZERO
     assocLegPolyArr(:,:) = ZERO
@@ -724,29 +725,8 @@ contains
 
     do m = 1, lnum
        do l = m, lnum
-
-          if (l == m) then
-
-             assocLegPolyArr(l,m) = (-1)**m * ( (ONE - x) * (ONE + x) )**(dble(m)/TWO)
-
-             ! Multiply by the double factorial term
-
-             do n = (2*m-1), 3, -2
-
-                assocLegPolyArr(l,m) = assocLegPolyArr(l,m) * n
-
-             end do
-
-          else if (l == m + 1) then
-
-             assocLegPolyArr(l,m) = x * (2*m + 1) * assocLegPolyArr(l-1,m)
-
-          else
-
-             assocLegPolyArr(l,m) = (x * (2*l - 1) * assocLegPolyArr(l-1,m) - (l + m - 1) * assocLegPolyArr(l-2,m) ) / (l-m)
-
-          end if
-
+          call calcAssocLegPolyLM(l, m, assocLegPolyLM, assocLegPolyLM1, assocLegPolyLM2, x)
+          assocLegPolyArr(l,m) = assocLegPolyLM
        end do
     end do
 
@@ -762,6 +742,58 @@ contains
     end do
 
   end subroutine fill_legendre_arrays
+
+
+
+  subroutine calcAssocLegPolyLM(l, m, assocLegPolyLM, assocLegPolyLM1, assocLegPolyLM2, x)
+
+    use amrex_constants_module, only: ONE, TWO
+
+    implicit none
+
+    integer,  intent(in   ) :: l, m
+    real(rt), intent(inout) :: assocLegPolyLM, assocLegPolyLM1, assocLegPolyLM2
+    real(rt), intent(in   ) :: x
+
+    integer :: n
+
+    ! Calculate the associated Legendre polynomials. There are a number of
+    ! recurrence relations, but many are unstable. We'll use one that is known
+    ! to be stable for the reasonably low values of l we care about in a simulation:
+    ! (l-m)P_l^m(x) = x(2l-1)P_{l-1}^m(x) - (l+m-1)P_{l-2}^m(x).
+    ! This uses the following two expressions as initial conditions:
+    ! P_m^m(x) = (-1)^m (2m-1)! (1-x^2)^(m/2)
+    ! P_{m+1}^m(x) = x (2m+1) P_m^m (x)
+
+    if (l == m) then
+
+       ! P_m^m
+
+       assocLegPolyLM = (-1)**m * ((ONE - x) * (ONE + x))**(dble(m)/TWO)
+
+       do n = (2*m-1), 3, -2
+
+          assocLegPolyLM = assocLegPolyLM * n
+
+       end do
+
+    else if (l == m + 1) then
+
+       ! P_{m+1}^m
+
+       assocLegPolyLM1 = assocLegPolyLM
+       assocLegPolyLM  = x * (2*m + 1) * assocLegPolyLM1
+
+    else
+
+       assocLegPolyLM2 = assocLegPolyLM1
+       assocLegPolyLM1 = assocLegPolyLM
+       assocLegPolyLM  = (x * (2*l - 1) * assocLegPolyLM1 - (l + m - 1) * assocLegPolyLM2) / (l-m)
+
+    end if
+
+  end subroutine calcAssocLegPolyLM
+
 
 
   subroutine calcLegPolyL(l, legPolyL, legPolyL1, legPolyL2, x)
