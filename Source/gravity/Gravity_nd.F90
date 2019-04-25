@@ -455,6 +455,7 @@ contains
     real(rt) :: legPolyL, legPolyL1, legPolyL2
     real(rt) :: assocLegPolyLM, assocLegPolyLM1, assocLegPolyLM2
     real(rt) :: r_L, r_U
+    real(rt) :: rmax_cubed
 
     ! If we're using this to construct boundary values, then only use
     ! the outermost bin.
@@ -470,6 +471,8 @@ contains
        call amrex_error("Error: ca_put_multipole_phi: requested more multipole moments than we allocated data for.")
     endif
 #endif
+
+    rmax_cubed = rmax**3
 
     do k = lo(3), hi(3)
        if (k .gt. domhi(3)) then
@@ -544,7 +547,7 @@ contains
 
                       ! Make sure we undo the volume scaling here.
 
-                      phi(i,j,k) = phi(i,j,k) + qL0(l,n) * legPolyL * r_U * rmax**3
+                      phi(i,j,k) = phi(i,j,k) + qL0(l,n) * legPolyL * r_U * rmax_cubed
 
                    end do
 
@@ -560,7 +563,7 @@ contains
                          ! Make sure we undo the volume scaling here.
 
                          phi(i,j,k) = phi(i,j,k) + (qLC(l,m,n) * cos(m * phiAngle) + qLS(l,m,n) * sin(m * phiAngle)) * &
-                                                   assocLegPolyLM * r_U * rmax**3
+                                                   assocLegPolyLM * r_U * rmax_cubed
 
                       enddo
 
@@ -613,6 +616,7 @@ contains
     integer  :: nlo, index
 
     real(rt) :: x, y, z, r, drInv, cosTheta, phiAngle
+    real(rt) :: rmax_cubed_inv
 
     ! If we're using this to construct boundary values, then only fill
     ! the outermost bin.
@@ -634,6 +638,8 @@ contains
        call amrex_error("Error: ca_compute_multipole_moments: requested more multipole moments than we allocated data for.")
     endif
 #endif
+
+    rmax_cubed_inv = ONE / rmax**3
 
     do k = lo(3), hi(3)
        z = ( problo(3) + (dble(k)+HALF) * dx(3) - center(3) ) / rmax
@@ -658,7 +664,7 @@ contains
 
              ! Now, compute the multipole moments.
 
-             call multipole_add(cosTheta, phiAngle, r, rho(i,j,k), vol(i,j,k) / rmax**3, &
+             call multipole_add(cosTheta, phiAngle, r, rho(i,j,k), vol(i,j,k) * rmax_cubed_inv, &
                                 qL0, qLC, qLS, qU0, qUC, qUS, lnum, npts, nlo, index, .true.)
 
              ! Now add in contributions if we have any symmetric boundaries in 3D.
@@ -668,7 +674,7 @@ contains
 
                 call multipole_symmetric_add(doSymmetricAddLo, doSymmetricAddHi, &
                                              x, y, z, problo, probhi, &
-                                             rho(i,j,k), vol(i,j,k) / rmax**3, &
+                                             rho(i,j,k), vol(i,j,k) * rmax_cubed_inv, &
                                              qL0, qLC, qLS, qU0, qUC, qUS, &
                                              lnum, npts, nlo, index)
 
