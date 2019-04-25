@@ -991,8 +991,10 @@ contains
 
        end do
 
-       do l = 0, lnum
-          do m = 1, l
+       do l = 1, lnum
+          do m = 1, lnum
+
+             if (m > l) continue
 
              rho_r_L = rho * (r ** dble( l  ))
              rho_r_U = rho * (r ** dble(-l-1))
