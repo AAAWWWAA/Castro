@@ -987,9 +987,15 @@ contains
              qL0(l,n) = qL0(l,n) + legPolyL * rho_r_L * vol * volumeFactor * p0(l)
           else
              qU0(l,n) = qU0(l,n) + legPolyL * rho_r_U * vol * volumeFactor * p0(l)
-          endif
+          end if
 
+       end do
+
+       do l = 0, lnum
           do m = 1, l
+
+             rho_r_L = rho * (r ** dble( l  ))
+             rho_r_U = rho * (r ** dble(-l-1))
 
              if (index .le. n) then
                 qLC(l,m,n) = qLC(l,m,n) + assocLegPolyArr(l,m) * cos(m * phiAngle) * rho_r_L * vol * pCS(l,m)
@@ -997,11 +1003,10 @@ contains
              else
                 qUC(l,m,n) = qUC(l,m,n) + assocLegPolyArr(l,m) * cos(m * phiAngle) * rho_r_U * vol * pCS(l,m)
                 qUS(l,m,n) = qUS(l,m,n) + assocLegPolyArr(l,m) * sin(m * phiAngle) * rho_r_U * vol * pCS(l,m)
-             endif
+             end if
 
-          enddo
-
-       enddo
+          end do
+       end do
 
     enddo
 
