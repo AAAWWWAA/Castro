@@ -712,9 +712,6 @@ contains
     real(rt) :: legPolyL, legPolyL1, legPolyL2
     real(rt) :: assocLegPolyLM, assocLegPolyLM1, assocLegPolyLM2
 
-    legPolyArr(:)        = ZERO
-    assocLegPolyArr(:,:) = ZERO
-
     ! First we'll do the associated Legendre polynomials. There are a number of
     ! recurrence relations, but many are unstable. We'll use one that is known
     ! to be stable for the reasonably low values of l we care about in a simulation:
