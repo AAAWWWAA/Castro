@@ -452,8 +452,8 @@ contains
     integer  :: i, j, k
     integer  :: l, m, n, nlo
     real(rt) :: x, y, z, r, cosTheta, phiAngle
-    real(rt) :: legPolyArr(0:lnum), assocLegPolyArr(0:lnum,0:lnum)
     real(rt) :: legPolyL, legPolyL1, legPolyL2
+    real(rt) :: assocLegPolyLM, assocLegPolyLM1, assocLegPolyLM2
     real(rt) :: r_L, r_U
 
     ! If we're using this to construct boundary values, then only use
@@ -532,37 +532,35 @@ contains
 
                 phi(i,j,k) = ZERO
 
-                ! First, calculate the Legendre polynomials.
-
-                legPolyArr(:) = ZERO
-                assocLegPolyArr(:,:) = ZERO
-
-                call fill_legendre_arrays(legPolyArr, assocLegPolyArr, cosTheta, lnum)
-
-                ! We want to undo the volume scaling; tack that onto the polynomial arrays.
-
-                legPolyArr = legPolyArr * rmax**3
-                assocLegPolyArr = assocLegPolyArr * rmax**3
-
-                ! Now compute the potentials on the ghost cells.
+                ! Compute the potentials on the ghost cells.
 
                 do n = nlo, npts-1
 
                    do l = 0, lnum
 
-                      r_L = r**dble( l  )
-                      r_U = r**dble(-l-1)
-
                       call calcLegPolyL(l, legPolyL, legPolyL1, legPolyL2, cosTheta)
+
+                      r_U = r**dble(-l-1)
 
                       ! Make sure we undo the volume scaling here.
 
                       phi(i,j,k) = phi(i,j,k) + qL0(l,n) * legPolyL * r_U * rmax**3
 
-                      do m = 1, l
+                   end do
+
+                   do m = 1, lnum
+                      do l = 1, lnum
+
+                         if (m > l) continue
+
+                         call calcAssocLegPolyLM(l, m, assocLegPolyLM, assocLegPolyLM1, assocLegPolyLM2, cosTheta)
+
+                         r_U = r**dble(-l-1)
+
+                         ! Make sure we undo the volume scaling here.
 
                          phi(i,j,k) = phi(i,j,k) + (qLC(l,m,n) * cos(m * phiAngle) + qLS(l,m,n) * sin(m * phiAngle)) * &
-                              assocLegPolyArr(l,m) * r_U
+                                                   assocLegPolyLM * r_U * rmax**3
 
                       enddo
 
@@ -700,39 +698,6 @@ contains
     enddo
 
   end function factorial
-
-
-
-  subroutine fill_legendre_arrays(legPolyArr, assocLegPolyArr, x, lnum)
-
-    use amrex_constants_module
-
-    implicit none
-
-    integer :: lnum
-    integer :: l, m, n
-    real(rt) :: x
-    real(rt) :: legPolyArr(0:lnum), assocLegPolyArr(0:lnum,0:lnum)
-
-    real(rt) :: legPolyL, legPolyL1, legPolyL2
-    real(rt) :: assocLegPolyLM, assocLegPolyLM1, assocLegPolyLM2
-
-    ! First we'll do the associated Legendre polynomials. There are a number of
-    ! recurrence relations, but many are unstable. We'll use one that is known
-    ! to be stable for the reasonably low values of l we care about in a simulation:
-    ! (l-m)P_l^m(x) = x(2l-1)P_{l-1}^m(x) - (l+m-1)P_{l-2}^m(x).
-    ! This uses the following two expressions as initial conditions:
-    ! P_m^m(x) = (-1)^m (2m-1)! (1-x^2)^(m/2)
-    ! P_{m+1}^m(x) = x (2m+1) P_m^m (x)
-
-    do m = 1, lnum
-       do l = m, lnum
-          call calcAssocLegPolyLM(l, m, assocLegPolyLM, assocLegPolyLM1, assocLegPolyLM2, x)
-          assocLegPolyArr(l,m) = assocLegPolyLM
-       end do
-    end do
-
-  end subroutine fill_legendre_arrays
 
 
 
