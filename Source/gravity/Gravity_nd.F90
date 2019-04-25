@@ -951,19 +951,12 @@ contains
 
     integer :: l, m, n
 
-    real(rt) :: legPolyArr(0:lnum), assocLegPolyArr(0:lnum,0:lnum)
     real(rt) :: legPolyL, legPolyL1, legPolyL2
     real(rt) :: assocLegPolyLM, assocLegPolyLM1, assocLegPolyLM2
 
     real(rt) :: rho_r_L, rho_r_U
 
     real(rt) :: p0(0:lnum), pCS(0:lnum,0:lnum)
-
-    call fill_legendre_arrays(legPolyArr, assocLegPolyArr, cosTheta, lnum)
-
-    ! Absorb factorial terms into associated Legendre polynomials
-
-    assocLegPolyArr = assocLegPolyArr * factArray
 
     p0 = ONE
     pCS = ONE
@@ -981,16 +974,20 @@ contains
 
           call calcLegPolyL(l, legPolyL, legPolyL1, legPolyL2, cosTheta)
 
-          rho_r_L = rho * (r ** dble( l  ))
-          rho_r_U = rho * (r ** dble(-l-1))
-
           if (index .le. n) then
+             rho_r_L = rho * (r ** dble( l  ))
              qL0(l,n) = qL0(l,n) + legPolyL * rho_r_L * vol * volumeFactor * p0(l)
           else
+             rho_r_U = rho * (r ** dble(-l-1))
              qU0(l,n) = qU0(l,n) + legPolyL * rho_r_U * vol * volumeFactor * p0(l)
           end if
 
        end do
+
+       ! For the associated Legendre polynomial loop, we loop over m and then l.
+       ! It means that we have to recompute rho_r_L or rho_r_U again, but the
+       ! recursion relation we use for the polynomials depends on l being the
+       ! innermost loop index.
 
        do m = 1, lnum
           do l = 1, lnum
@@ -999,13 +996,12 @@ contains
 
              call calcAssocLegPolyLM(l, m, assocLegPolyLM, assocLegPolyLM1, assocLegPolyLM2, cosTheta)
 
-             rho_r_L = rho * (r ** dble( l  ))
-             rho_r_U = rho * (r ** dble(-l-1))
-
              if (index .le. n) then
+                rho_r_L = rho * (r ** dble( l  ))
                 qLC(l,m,n) = qLC(l,m,n) + assocLegPolyLM * cos(m * phiAngle) * rho_r_L * vol * pCS(l,m) * factArray(l,m)
                 qLS(l,m,n) = qLS(l,m,n) + assocLegPolyLM * sin(m * phiAngle) * rho_r_L * vol * pCS(l,m) * factArray(l,m)
              else
+                rho_r_U = rho * (r ** dble(-l-1))
                 qUC(l,m,n) = qUC(l,m,n) + assocLegPolyLM * cos(m * phiAngle) * rho_r_U * vol * pCS(l,m) * factArray(l,m)
                 qUS(l,m,n) = qUS(l,m,n) + assocLegPolyLM * sin(m * phiAngle) * rho_r_U * vol * pCS(l,m) * factArray(l,m)
              end if
