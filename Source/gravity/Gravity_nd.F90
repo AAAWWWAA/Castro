@@ -953,6 +953,7 @@ contains
 
     real(rt) :: legPolyArr(0:lnum), assocLegPolyArr(0:lnum,0:lnum)
     real(rt) :: legPolyL, legPolyL1, legPolyL2
+    real(rt) :: assocLegPolyLM, assocLegPolyLM1, assocLegPolyLM2
 
     real(rt) :: rho_r_L, rho_r_U
 
@@ -996,15 +997,17 @@ contains
 
              if (m > l) continue
 
+             call calcAssocLegPolyLM(l, m, assocLegPolyLM, assocLegPolyLM1, assocLegPolyLM2, cosTheta)
+
              rho_r_L = rho * (r ** dble( l  ))
              rho_r_U = rho * (r ** dble(-l-1))
 
              if (index .le. n) then
-                qLC(l,m,n) = qLC(l,m,n) + assocLegPolyArr(l,m) * cos(m * phiAngle) * rho_r_L * vol * pCS(l,m)
-                qLS(l,m,n) = qLS(l,m,n) + assocLegPolyArr(l,m) * sin(m * phiAngle) * rho_r_L * vol * pCS(l,m)
+                qLC(l,m,n) = qLC(l,m,n) + assocLegPolyLM * cos(m * phiAngle) * rho_r_L * vol * pCS(l,m) * factArray(l,m)
+                qLS(l,m,n) = qLS(l,m,n) + assocLegPolyLM * sin(m * phiAngle) * rho_r_L * vol * pCS(l,m) * factArray(l,m)
              else
-                qUC(l,m,n) = qUC(l,m,n) + assocLegPolyArr(l,m) * cos(m * phiAngle) * rho_r_U * vol * pCS(l,m)
-                qUS(l,m,n) = qUS(l,m,n) + assocLegPolyArr(l,m) * sin(m * phiAngle) * rho_r_U * vol * pCS(l,m)
+                qUC(l,m,n) = qUC(l,m,n) + assocLegPolyLM * cos(m * phiAngle) * rho_r_U * vol * pCS(l,m) * factArray(l,m)
+                qUS(l,m,n) = qUS(l,m,n) + assocLegPolyLM * sin(m * phiAngle) * rho_r_U * vol * pCS(l,m) * factArray(l,m)
              end if
 
           end do
