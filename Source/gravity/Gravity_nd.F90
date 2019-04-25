@@ -991,8 +991,8 @@ contains
 
        end do
 
-       do l = 1, lnum
-          do m = 1, lnum
+       do m = 1, lnum
+          do l = 1, lnum
 
              if (m > l) continue
 
