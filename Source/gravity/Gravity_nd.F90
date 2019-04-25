@@ -927,16 +927,14 @@ contains
 
     real(rt) :: rho_r_L, rho_r_U
 
-    real(rt) :: p0(0:lnum), pCS(0:lnum,0:lnum)
+    real(rt) :: dQ
 
-    p0 = ONE
-    pCS = ONE
+    logical :: parity
+
+    parity = .false.
 
     if (present(do_parity)) then
-       if (do_parity) then
-          p0 = parity_q0
-          pCS = parity_qC_qS
-       endif
+       parity = do_parity
     endif
 
     do n = nlo, npts-1
@@ -946,11 +944,25 @@ contains
           call calcLegPolyL(l, legPolyL, legPolyL1, legPolyL2, cosTheta)
 
           if (index .le. n) then
+
              rho_r_L = rho * (r ** dble( l  ))
-             qL0(l,n) = qL0(l,n) + legPolyL * rho_r_L * vol * volumeFactor * p0(l)
+
+             dQ = legPolyL * rho_r_L * vol * volumeFactor
+             if (parity) then
+                dQ = dQ * parity_q0(l)
+             end if
+             qL0(l,n) = qL0(l,n) + dQ
+
           else
+
              rho_r_U = rho * (r ** dble(-l-1))
-             qU0(l,n) = qU0(l,n) + legPolyL * rho_r_U * vol * volumeFactor * p0(l)
+
+             dQ = legPolyL * rho_r_U * vol * volumeFactor
+             if (parity) then
+                dQ = dQ * parity_q0(l)
+             end if
+             qU0(l,n) = qU0(l,n) + dQ
+
           end if
 
        end do
@@ -968,13 +980,37 @@ contains
              call calcAssocLegPolyLM(l, m, assocLegPolyLM, assocLegPolyLM1, assocLegPolyLM2, cosTheta)
 
              if (index .le. n) then
+
                 rho_r_L = rho * (r ** dble( l  ))
-                qLC(l,m,n) = qLC(l,m,n) + assocLegPolyLM * cos(m * phiAngle) * rho_r_L * vol * pCS(l,m) * factArray(l,m)
-                qLS(l,m,n) = qLS(l,m,n) + assocLegPolyLM * sin(m * phiAngle) * rho_r_L * vol * pCS(l,m) * factArray(l,m)
+
+                dQ = assocLegPolyLM * cos(m * phiAngle) * rho_r_L * vol * factArray(l,m)
+                if (parity) then
+                   dQ = dQ * parity_qC_qS(l,m)
+                end if
+                qLC(l,m,n) = qLC(l,m,n) + dQ
+
+                dQ = assocLegPolyLM * sin(m * phiAngle) * rho_r_L * vol * factArray(l,m)
+                if (parity) then
+                   dQ = dQ * parity_qC_qS(l,m)
+                end if
+                qLS(l,m,n) = qLS(l,m,n) + dQ
+
              else
+
                 rho_r_U = rho * (r ** dble(-l-1))
-                qUC(l,m,n) = qUC(l,m,n) + assocLegPolyLM * cos(m * phiAngle) * rho_r_U * vol * pCS(l,m) * factArray(l,m)
-                qUS(l,m,n) = qUS(l,m,n) + assocLegPolyLM * sin(m * phiAngle) * rho_r_U * vol * pCS(l,m) * factArray(l,m)
+
+                dQ = assocLegPolyLM * cos(m * phiAngle) * rho_r_U * vol * factArray(l,m)
+                if (parity) then
+                   dQ = dQ * parity_qC_qS(l,m)
+                end if
+                qUC(l,m,n) = qUC(l,m,n) + dQ
+
+                dQ = assocLegPolyLM * sin(m * phiAngle) * rho_r_U * vol * factArray(l,m)
+                if (parity) then
+                   dQ = dQ * parity_qC_qS(l,m)
+                end if
+                qUS(l,m,n) = qUS(l,m,n) + dQ
+
              end if
 
           end do
