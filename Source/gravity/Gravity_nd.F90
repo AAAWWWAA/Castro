@@ -453,6 +453,7 @@ contains
     integer  :: l, m, n, nlo
     real(rt) :: x, y, z, r, cosTheta, phiAngle
     real(rt) :: legPolyArr(0:lnum), assocLegPolyArr(0:lnum,0:lnum)
+    real(rt) :: legPolyL, legPolyL1, legPolyL2
     real(rt) :: r_L, r_U
 
     ! If we're using this to construct boundary values, then only use
@@ -552,7 +553,11 @@ contains
                       r_L = r**dble( l  )
                       r_U = r**dble(-l-1)
 
-                      phi(i,j,k) = phi(i,j,k) + qL0(l,n) * legPolyArr(l) * r_U
+                      call calcLegPolyL(l, legPolyL, legPolyL1, legPolyL2, cosTheta)
+
+                      ! Make sure we undo the volume scaling here.
+
+                      phi(i,j,k) = phi(i,j,k) + qL0(l,n) * legPolyL * r_U * rmax**3
 
                       do m = 1, l
 
@@ -725,17 +730,6 @@ contains
           call calcAssocLegPolyLM(l, m, assocLegPolyLM, assocLegPolyLM1, assocLegPolyLM2, x)
           assocLegPolyArr(l,m) = assocLegPolyLM
        end do
-    end do
-
-
-    ! Now we'll do the normal Legendre polynomials. We use a stable recurrence relation:
-    ! (l+1) P_{l+1}(x) = (2l+1) x P_l(x) - l P_{l-1}(x). This uses initial conditions:
-    ! P_0(x) = 1
-    ! P_1(x) = x
-
-    do l = 0, lnum
-       call calcLegPolyL(l, legPolyL, legPolyL1, legPolyL2, x)
-       legPolyArr(l) = legPolyL
     end do
 
   end subroutine fill_legendre_arrays
@@ -958,6 +952,7 @@ contains
     integer :: l, m, n
 
     real(rt) :: legPolyArr(0:lnum), assocLegPolyArr(0:lnum,0:lnum)
+    real(rt) :: legPolyL, legPolyL1, legPolyL2
 
     real(rt) :: rho_r_L, rho_r_U
 
@@ -983,13 +978,15 @@ contains
 
        do l = 0, lnum
 
+          call calcLegPolyL(l, legPolyL, legPolyL1, legPolyL2, cosTheta)
+
           rho_r_L = rho * (r ** dble( l  ))
           rho_r_U = rho * (r ** dble(-l-1))
 
           if (index .le. n) then
-             qL0(l,n) = qL0(l,n) + legPolyArr(l) * rho_r_L * vol * volumeFactor * p0(l)
+             qL0(l,n) = qL0(l,n) + legPolyL * rho_r_L * vol * volumeFactor * p0(l)
           else
-             qU0(l,n) = qU0(l,n) + legPolyArr(l) * rho_r_U * vol * volumeFactor * p0(l)
+             qU0(l,n) = qU0(l,n) + legPolyL * rho_r_U * vol * volumeFactor * p0(l)
           endif
 
           do m = 1, l
