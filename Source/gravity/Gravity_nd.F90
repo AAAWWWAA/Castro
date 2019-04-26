@@ -17,6 +17,16 @@ module gravity_module
   real(rt), allocatable :: factArray(:,:)
   real(rt), allocatable :: parity_q0(:), parity_qC_qS(:,:)
 
+#ifdef AMREX_USE_CUDA
+  attributes(managed) :: volumeFactor, parityFactor
+  attributes(managed) :: rmax
+  attributes(managed) :: doSymmetricAddLo, doSymmetricAddHi, doSymmetricAdd
+  attributes(managed) :: doReflectionLo, doReflectionHi
+  attributes(managed) :: lnum_max
+  attributes(managed) :: factArray
+  attributes(managed) :: parity_q0, parity_qC_qS
+#endif
+
 contains
 
   ! ::
@@ -457,6 +467,8 @@ contains
     real(rt) :: r_L, r_U
     real(rt) :: rmax_cubed
 
+    !$gpu
+
     ! If we're using this to construct boundary values, then only use
     ! the outermost bin.
 
@@ -618,6 +630,8 @@ contains
     real(rt) :: x, y, z, r, drInv, cosTheta, phiAngle
     real(rt) :: rmax_cubed_inv
 
+    !$gpu
+
     ! If we're using this to construct boundary values, then only fill
     ! the outermost bin.
 
@@ -719,6 +733,8 @@ contains
 
     integer :: n
 
+    !$gpu
+
     ! Calculate the associated Legendre polynomials. There are a number of
     ! recurrence relations, but many are unstable. We'll use one that is known
     ! to be stable for the reasonably low values of l we care about in a simulation:
@@ -767,6 +783,8 @@ contains
     integer,  intent(in   ) :: l
     real(rt), intent(inout) :: legPolyL, legPolyL1, legPolyL2
     real(rt), intent(in   ) :: x
+
+    !$gpu
 
     ! Calculate the Legendre polynomials. We use a stable recurrence relation:
     ! (l+1) P_{l+1}(x) = (2l+1) x P_l(x) - l P_{l-1}(x).
@@ -820,6 +838,8 @@ contains
 
     real(rt) :: cosTheta, phiAngle, r
     real(rt) :: xLo, yLo, zLo, xHi, yHi, zHi
+
+    !$gpu
 
     xLo = ( TWO * (problo(1) - center(1)) ) / rmax - x
     xHi = ( TWO * (probhi(1) - center(1)) ) / rmax - x
@@ -931,6 +951,8 @@ contains
 
     logical :: parity
 
+    !$gpu
+
     parity = .false.
 
     if (present(do_parity)) then
@@ -951,7 +973,7 @@ contains
              if (parity) then
                 dQ = dQ * parity_q0(l)
              end if
-             qL0(l,n) = qL0(l,n) + dQ
+             call amrex_add(qL0(l,n), dQ)
 
           else
 
@@ -961,7 +983,7 @@ contains
              if (parity) then
                 dQ = dQ * parity_q0(l)
              end if
-             qU0(l,n) = qU0(l,n) + dQ
+             call amrex_add(qU0(l,n), dQ)
 
           end if
 
@@ -987,13 +1009,13 @@ contains
                 if (parity) then
                    dQ = dQ * parity_qC_qS(l,m)
                 end if
-                qLC(l,m,n) = qLC(l,m,n) + dQ
+                call amrex_add(qLC(l,m,n), dQ)
 
                 dQ = assocLegPolyLM * sin(m * phiAngle) * rho_r_L * vol * factArray(l,m)
                 if (parity) then
                    dQ = dQ * parity_qC_qS(l,m)
                 end if
-                qLS(l,m,n) = qLS(l,m,n) + dQ
+                call amrex_add(qLS(l,m,n), dQ)
 
              else
 
@@ -1003,13 +1025,13 @@ contains
                 if (parity) then
                    dQ = dQ * parity_qC_qS(l,m)
                 end if
-                qUC(l,m,n) = qUC(l,m,n) + dQ
+                call amrex_add(qUC(l,m,n), dQ)
 
                 dQ = assocLegPolyLM * sin(m * phiAngle) * rho_r_U * vol * factArray(l,m)
                 if (parity) then
                    dQ = dQ * parity_qC_qS(l,m)
                 end if
-                qUS(l,m,n) = qUS(l,m,n) + dQ
+                call amrex_add(qUS(l,m,n), dQ)
 
              end if
 
