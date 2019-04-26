@@ -702,19 +702,21 @@ contains
 
 
 
-  function factorial(n)
+  function factorial(n) result(fact)
 
-    use amrex_constants_module
+    use amrex_constants_module, only: ONE
 
     implicit none
 
     integer :: n, i
-    real(rt) :: factorial
+    real(rt) :: fact
 
-    factorial = ONE
+    !$gpu
+
+    fact = ONE
 
     do i = 2, n
-       factorial = factorial * dble(i)
+       fact = fact * dble(i)
     enddo
 
   end function factorial
