@@ -344,30 +344,6 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
     lastDtRetryLimited = 0;
     lastDtFromRetry = 1.e200;
 
-    // If we're doing AMR and running on a GPU, prefetch the data
-    // for this level to the device in preparation for the advance.
-    // We can skip this if we're on the finest level and no longer
-    // on the first iteration.
-
-    const int finest_level = parent->finestLevel();
-
-    if (!(level == parent->finestLevel() && amr_iteration > 1)) {
-
-        for (int k = 0; k < num_state_type; k++) {
-
-            if (state[k].hasOldData()) {
-                amrex::prefetchToDevice(get_old_data(k));
-            }
-
-            if (state[k].hasNewData()) {
-                amrex::prefetchToDevice(get_new_data(k));
-            }
-
-        }
-
-    }
-
-
     if (use_post_step_regrid && level > 0) {
 
 	if (getLevel(level-1).post_step_regrid && amr_iteration == 1) {
@@ -487,6 +463,29 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
     if (do_grav)
 	gravity->swapTimeLevels(level);
 #endif
+
+    // If we're doing AMR and running on a GPU, prefetch the data
+    // for this level to the device in preparation for the advance.
+    // We can skip this if we're on the finest level and no longer
+    // on the first iteration.
+
+    const int finest_level = parent->finestLevel();
+
+    if (!(level == parent->finestLevel() && amr_iteration > 1)) {
+
+        for (int k = 0; k < num_state_type; k++) {
+
+            if (state[k].hasOldData()) {
+                amrex::prefetchToDevice(get_old_data(k));
+            }
+
+            if (state[k].hasNewData()) {
+                amrex::prefetchToDevice(get_new_data(k));
+            }
+
+        }
+
+    }
 
     // Ensure data is valid before beginning advance. This addresses
     // the fact that we may have new data on this level that was interpolated
