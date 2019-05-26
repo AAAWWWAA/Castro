@@ -344,6 +344,30 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
     lastDtRetryLimited = 0;
     lastDtFromRetry = 1.e200;
 
+    // If we're doing AMR and running on a GPU, prefetch the data
+    // for this level to the device in preparation for the advance.
+    // We can skip this if we're on the finest level and no longer
+    // on the first iteration.
+
+    const int finest_level = parent->finestLevel();
+
+    if (!(level == parent->finestLevel() && amr_iteration > 1)) {
+
+        for (int k = 0; k < num_state_type; k++) {
+
+            if (state[k].hasOldData()) {
+                amrex::prefetchToDevice(get_old_data(k));
+            }
+
+            if (state[k].hasNewData()) {
+                amrex::prefetchToDevice(get_new_data(k));
+            }
+
+        }
+
+    }
+
+
     if (use_post_step_regrid && level > 0) {
 
 	if (getLevel(level-1).post_step_regrid && amr_iteration == 1) {
@@ -645,6 +669,27 @@ Castro::finalize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
       R_old.clear();
       Sburn.clear();
 #endif
+    }
+
+    // If we're doing AMR and running on a GPU, prefetch the data
+    // for this level to the host in preparation for the next level.
+    // We can skip this if we're on the finest level and not yet
+    // on the last iteration.
+
+    if (!(level == parent->finestLevel() && amr_iteration < amr_ncycle)) {
+
+        for (int k = 0; k < num_state_type; k++) {
+
+            if (state[k].hasOldData()) {
+                amrex::prefetchToHost(get_old_data(k));
+            }
+
+            if (state[k].hasNewData()) {
+                amrex::prefetchToHost(get_new_data(k));
+            }
+
+        }
+
     }
 
     // Record how many zones we have advanced.
