@@ -10,7 +10,7 @@ extern "C"
   void ca_denerror
     (const int* lo, const int* hi,
      int8_t* tag, const int* tag_lo, const int* tag_hi,
-     BL_FORT_FAB_ARG_3D(den), const int ncomp,
+     BL_FORT_FAB_ARG_3D(state),
      const amrex::Real* dx, const amrex::Real* problo,
      const int8_t tagval, const int8_t clearval,
      const amrex::Real time, const int level);

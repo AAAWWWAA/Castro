@@ -60,26 +60,27 @@ contains
 
   subroutine ca_denerror(lo, hi, &
                          tag, taglo, taghi, &
-                         den, denlo, denhi, nd, &
-                         delta, problo, &
+                         state, slo, shi, &
+                         dx, problo, &
                          set, clear, time, level) &
                          bind(C, name="ca_denerror")
      !
      ! This routine will tag high error cells based on the density
      !
 
+    use meth_params_module, only: NVAR, URHO
     use prob_params_module, only: dg
 
     implicit none
 
     integer,    intent(in   ) :: lo(3), hi(3)
     integer,    intent(in   ) :: taglo(3), taghi(3)
-    integer,    intent(in   ) :: denlo(3), denhi(3)
+    integer,    intent(in   ) :: slo(3), shi(3)
     integer(1), intent(inout) :: tag(taglo(1):taghi(1),taglo(2):taghi(2),taglo(3):taghi(3))
-    real(rt),   intent(in   ) :: den(denlo(1):denhi(1),denlo(2):denhi(2),denlo(3):denhi(3),nd)
-    real(rt),   intent(in   ) :: delta(3), problo(3)
+    real(rt),   intent(in   ) :: state(slo(1):shi(1),slo(2):shi(2),slo(3):shi(3),NVAR)
+    real(rt),   intent(in   ) :: dx(3), problo(3)
     integer(1), intent(in   ), value :: set, clear
-    integer,    intent(in   ), value :: nd, level
+    integer,    intent(in   ), value :: level
     real(rt),   intent(in   ), value :: time
 
     real(rt) :: ax, ay, az
@@ -87,12 +88,12 @@ contains
 
     !$gpu
 
-    !     Tag on regions of high density
+    ! Tag on regions of high density
     if (level .lt. max_denerr_lev) then
        do k = lo(3), hi(3)
           do j = lo(2), hi(2)
              do i = lo(1), hi(1)
-                if (den(i,j,k,1) .ge. denerr) then
+                if (state(i,j,k,URHO) .ge. denerr) then
                    tag(i,j,k) = set
                 endif
              enddo
@@ -100,18 +101,18 @@ contains
        enddo
     endif
 
-    !     Tag on regions of high density gradient
+    ! Tag on regions of high density gradient
     if (level .lt. max_dengrad_lev .or. level .lt. max_dengrad_rel_lev) then
        do k = lo(3), hi(3)
           do j = lo(2), hi(2)
              do i = lo(1), hi(1)
-                ax = ABS(den(i+1*dg(1),j,k,1) - den(i,j,k,1))
-                ay = ABS(den(i,j+1*dg(2),k,1) - den(i,j,k,1))
-                az = ABS(den(i,j,k+1*dg(3),1) - den(i,j,k,1))
-                ax = MAX(ax,ABS(den(i,j,k,1) - den(i-1*dg(1),j,k,1)))
-                ay = MAX(ay,ABS(den(i,j,k,1) - den(i,j-1*dg(2),k,1)))
-                az = MAX(az,ABS(den(i,j,k,1) - den(i,j,k-1*dg(3),1)))
-                if (MAX(ax,ay,az) .ge. dengrad .or. MAX(ax,ay,az) .ge. ABS(dengrad_rel * den(i,j,k,1))) then
+                ax = ABS(state(i+1*dg(1),j,k,URHO) - state(i,j,k,URHO))
+                ay = ABS(state(i,j+1*dg(2),k,URHO) - state(i,j,k,URHO))
+                az = ABS(state(i,j,k+1*dg(3),URHO) - state(i,j,k,URHO))
+                ax = MAX(ax,ABS(state(i,j,k,URHO) - state(i-1*dg(1),j,k,URHO)))
+                ay = MAX(ay,ABS(state(i,j,k,URHO) - state(i,j-1*dg(2),k,URHO)))
+                az = MAX(az,ABS(state(i,j,k,URHO) - state(i,j,k-1*dg(3),URHO)))
+                if (MAX(ax,ay,az) .ge. dengrad .or. MAX(ax,ay,az) .ge. ABS(dengrad_rel * state(i,j,k,URHO))) then
                    tag(i,j,k) = set
                 endif
              enddo
