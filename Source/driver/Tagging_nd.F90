@@ -68,7 +68,7 @@ contains
      ! This routine will tag high error cells based on the density
      !
 
-    use meth_params_module, only: NVAR, URHO
+    use meth_params_module, only: NVAR, URHO, UTEMP
     use prob_params_module, only: dg
 
     implicit none
@@ -120,45 +120,12 @@ contains
        enddo
     endif
 
-  end subroutine ca_denerror
-
-
-
-  subroutine ca_temperror(lo, hi, &
-                          tag, taglo, taghi, &
-                          temp, templo, temphi, np, &
-                          delta, problo, &
-                          set, clear, time, level) &
-                          bind(C, name="ca_temperror")
-  !
-  ! This routine will tag high error cells based on the temperature
-  !
-
-    use prob_params_module, only: dg
-
-    implicit none
-
-    integer,    intent(in   ) :: lo(3), hi(3)
-    integer,    intent(in   ) :: taglo(3), taghi(3)
-    integer,    intent(in   ) :: templo(3), temphi(3)
-    integer(1), intent(inout) :: tag(taglo(1):taghi(1),taglo(2):taghi(2),taglo(3):taghi(3))
-    real(rt),   intent(in   ) :: temp(templo(1):temphi(1),templo(2):temphi(2),templo(3):temphi(3),np)
-    real(rt),   intent(in   ) :: delta(3), problo(3)
-    integer(1), intent(in   ), value :: set, clear
-    integer,    intent(in   ), value :: np, level
-    real(rt),   intent(in   ), value :: time
-
-    real(rt) :: ax, ay, az
-    integer  :: i, j, k
-
-    !$gpu
-
-    !     Tag on regions of high temperature
+    ! Tag on regions of high temperature
     if (level .lt. max_temperr_lev) then
        do k = lo(3), hi(3)
           do j = lo(2), hi(2)
              do i = lo(1), hi(1)
-                if (temp(i,j,k,1) .ge. temperr) then
+                if (state(i,j,k,UTEMP) .ge. temperr) then
                    tag(i,j,k) = set
                 endif
              enddo
@@ -166,18 +133,18 @@ contains
        enddo
     endif
 
-    !     Tag on regions of high temperature gradient
+    ! Tag on regions of high temperature gradient
     if (level .lt. max_tempgrad_lev .or. level .lt. max_tempgrad_rel_lev) then
        do k = lo(3), hi(3)
           do j = lo(2), hi(2)
              do i = lo(1), hi(1)
-                ax = ABS(temp(i+1*dg(1),j,k,1) - temp(i,j,k,1))
-                ay = ABS(temp(i,j+1*dg(2),k,1) - temp(i,j,k,1))
-                az = ABS(temp(i,j,k+1*dg(3),1) - temp(i,j,k,1))
-                ax = MAX(ax,ABS(temp(i,j,k,1) - temp(i-1*dg(1),j,k,1)))
-                ay = MAX(ay,ABS(temp(i,j,k,1) - temp(i,j-1*dg(2),k,1)))
-                az = MAX(az,ABS(temp(i,j,k,1) - temp(i,j,k-1*dg(3),1)))
-                if (MAX(ax,ay,az) .ge. tempgrad .or. MAX(ax,ay,az) .ge. ABS(tempgrad_rel * temp(i,j,k,1))) then
+                ax = ABS(state(i+1*dg(1),j,k,UTEMP) - state(i,j,k,UTEMP))
+                ay = ABS(state(i,j+1*dg(2),k,UTEMP) - state(i,j,k,UTEMP))
+                az = ABS(state(i,j,k+1*dg(3),UTEMP) - state(i,j,k,UTEMP))
+                ax = MAX(ax,ABS(state(i,j,k,UTEMP) - state(i-1*dg(1),j,k,UTEMP)))
+                ay = MAX(ay,ABS(state(i,j,k,UTEMP) - state(i,j-1*dg(2),k,UTEMP)))
+                az = MAX(az,ABS(state(i,j,k,UTEMP) - state(i,j,k-1*dg(3),UTEMP)))
+                if (MAX(ax,ay,az) .ge. tempgrad .or. MAX(ax,ay,az) .ge. ABS(tempgrad_rel * state(i,j,k,UTEMP))) then
                    tag(i,j,k) = set
                 endif
              enddo
@@ -185,7 +152,7 @@ contains
        enddo
     endif
 
-  end subroutine ca_temperror
+  end subroutine ca_denerror
 
 
 

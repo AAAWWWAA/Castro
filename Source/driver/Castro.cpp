@@ -3122,14 +3122,6 @@ Castro::apply_tagging_func(TagBoxArray& tags, Real time, int j)
                             AMREX_REAL_ANYD(dx), AMREX_REAL_ANYD(prob_lo),
                             tagval, clearval, time, level);
             }
-            else if (err_list_names[j] == "Temp") {
-#pragma gpu
-                ca_temperror(AMREX_INT_ANYD(lo), AMREX_INT_ANYD(hi),
-                             (int8_t*) BL_TO_FORTRAN_ANYD(tagfab),
-                             BL_TO_FORTRAN_ANYD(datfab), ncomp,
-                             AMREX_REAL_ANYD(dx), AMREX_REAL_ANYD(prob_lo),
-                             tagval, clearval, time, level);
-            }
             else if (err_list_names[j] == "pressure") {
 #pragma gpu
                 ca_presserror(AMREX_INT_ANYD(lo), AMREX_INT_ANYD(hi),
