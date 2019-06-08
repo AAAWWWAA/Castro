@@ -3130,14 +3130,6 @@ Castro::apply_tagging_func(TagBoxArray& tags, Real time, int j)
                               AMREX_REAL_ANYD(dx), AMREX_REAL_ANYD(prob_lo),
                               tagval, clearval, time, level);
             }
-            else if (err_list_names[j] == "x_velocity" || err_list_names[j] == "y_velocity" || err_list_names[j] == "z_velocity") {
-#pragma gpu
-                ca_velerror(AMREX_INT_ANYD(lo), AMREX_INT_ANYD(hi),
-                            (int8_t*) BL_TO_FORTRAN_ANYD(tagfab),
-                            BL_TO_FORTRAN_ANYD(datfab), ncomp,
-                            AMREX_REAL_ANYD(dx), AMREX_REAL_ANYD(prob_lo),
-                            tagval, clearval, time, level);
-            }
 #ifdef REACTION
             else if (err_list_names[j] == "t_sound_t_enuc") {
 #pragma gpu
