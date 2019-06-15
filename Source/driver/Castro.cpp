@@ -3083,6 +3083,10 @@ Castro::apply_tagging_func(TagBoxArray& tags, Real time, int j)
     S_new_border.define(grids, dmap, NUM_STATE, err_list_ng[j]);
     expand_state(S_new_border, time, err_list_ng[j]);
 
+#ifdef REACTIONS
+    MultiFab& R_new = get_new_data(Reactions_Type);
+#endif
+
     BL_ASSERT(mf);
 
 #ifdef _OPENMP
@@ -3143,7 +3147,7 @@ Castro::apply_tagging_func(TagBoxArray& tags, Real time, int j)
 #pragma gpu
                 ca_enucerror(AMREX_INT_ANYD(lo), AMREX_INT_ANYD(hi),
                              (int8_t*) BL_TO_FORTRAN_ANYD(tagfab),
-                             BL_TO_FORTRAN_ANYD(datfab), ncomp,
+                             BL_TO_FORTRAN_ANYD(R_new),
                              AMREX_REAL_ANYD(dx), AMREX_REAL_ANYD(prob_lo),
                              tagval, clearval, time, level);
             }

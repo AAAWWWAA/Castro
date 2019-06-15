@@ -386,7 +386,7 @@ contains
 
   subroutine ca_enucerror(lo, hi, &
                           tag, taglo, taghi, &
-                          enuc,enuclo,enuchi, nd, &
+                          reactions, r_lo, r_hi, &
                           delta, problo, &
                           set, clear, time, level) &
                           bind(C, name="ca_enucerror")
@@ -397,14 +397,15 @@ contains
 
     use prob_params_module, only: dg
     use amrex_fort_module, only: rt => amrex_real
+    use network, only: nspec
 
     implicit none
 
     integer,    intent(in   ) :: lo(3), hi(3)
     integer,    intent(in   ) :: taglo(3), taghi(3)
-    integer,    intent(in   ) :: enuclo(3), enuchi(3)
+    integer,    intent(in   ) :: r_lo(3), r_hi(3)
     integer(1), intent(inout) :: tag(taglo(1):taghi(1),taglo(2):taghi(2),taglo(3):taghi(3))
-    real(rt),   intent(in   ) :: enuc(enuclo(1):enuchi(1),enuclo(2):enuchi(2),enuclo(3):enuchi(3),nd)
+    real(rt),   intent(in   ) :: reactions(r_lo(1):r_hi(1),r_lo(2):r_hi(2),r_lo(3):r_hi(3),nspec+2)
     real(rt),   intent(in   ) :: delta(3), problo(3)
     integer(1), intent(in   ), value :: set, clear
     integer,    intent(in   ), value :: nd, level
@@ -419,7 +420,7 @@ contains
        do k = lo(3), hi(3)
           do j = lo(2), hi(2)
              do i = lo(1), hi(1)
-                if (enuc(i,j,k,1) .ge. enucerr) then
+                if (reactions(i,j,k,nspec+1) .ge. enucerr) then
                    tag(i,j,k) = set
                 endif
              enddo
