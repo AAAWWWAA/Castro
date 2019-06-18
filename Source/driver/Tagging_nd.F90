@@ -408,7 +408,7 @@ contains
     real(rt),   intent(in   ) :: reactions(r_lo(1):r_hi(1),r_lo(2):r_hi(2),r_lo(3):r_hi(3),nspec+2)
     real(rt),   intent(in   ) :: delta(3), problo(3)
     integer(1), intent(in   ), value :: set, clear
-    integer,    intent(in   ), value :: nd, level
+    integer,    intent(in   ), value :: level
     real(rt),   intent(in   ), value :: time
 
     integer :: i, j, k

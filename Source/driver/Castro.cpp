@@ -3147,7 +3147,7 @@ Castro::apply_tagging_func(TagBoxArray& tags, Real time, int j)
 #pragma gpu
                 ca_enucerror(AMREX_INT_ANYD(lo), AMREX_INT_ANYD(hi),
                              (int8_t*) BL_TO_FORTRAN_ANYD(tagfab),
-                             BL_TO_FORTRAN_ANYD(R_new),
+                             BL_TO_FORTRAN_ANYD(R_new[mfi]),
                              AMREX_REAL_ANYD(dx), AMREX_REAL_ANYD(prob_lo),
                              tagval, clearval, time, level);
             }
