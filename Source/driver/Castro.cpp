@@ -2990,6 +2990,21 @@ void Castro::prefetchToHost()
 
     }
 
+    amrex::prefetchToHost(volume);
+    for (int i = 0; i < AMREX_SPACEDIM; ++i) {
+        amrex::prefetchToHost(area[i]);
+        amrex::prefetchToHost(*(fluxes[i]));
+#ifdef RADIATION
+        amrex::prefetchToHost(*(rad_fluxes[i]));
+#endif
+        amrex::prefetchToHost(*(mass_fluxes[i]));
+    }
+
+#if (BL_SPACEDIM <= 2)
+    if (!Geom().IsCartesian())
+        amrex::prefetchToHost(P_radial);
+#endif
+
 }
 
 void Castro::prefetchToDevice()
@@ -3007,6 +3022,21 @@ void Castro::prefetchToDevice()
 
     }
 
+    amrex::prefetchToDevice(volume);
+    for (int i = 0; i < AMREX_SPACEDIM; ++i) {
+        amrex::prefetchToDevice(area[i]);
+        amrex::prefetchToDevice(*(fluxes[i]));
+#ifdef RADIATION
+        amrex::prefetchToDevice(*(rad_fluxes[i]));
+#endif
+        amrex::prefetchToDevice(*(mass_fluxes[i]));
+    }
+
+#if (BL_SPACEDIM <= 2)
+    if (!Geom().IsCartesian())
+        amrex::prefetchToDevice(P_radial);
+#endif
+    
 }
 
 void
