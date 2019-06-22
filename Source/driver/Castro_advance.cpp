@@ -472,19 +472,7 @@ Castro::initialize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle
     const int finest_level = parent->finestLevel();
 
     if (!(level == parent->finestLevel() && amr_iteration > 1)) {
-
-        for (int k = 0; k < num_state_type; k++) {
-
-            if (state[k].hasOldData()) {
-                amrex::prefetchToDevice(get_old_data(k));
-            }
-
-            if (state[k].hasNewData()) {
-                amrex::prefetchToDevice(get_new_data(k));
-            }
-
-        }
-
+        prefetchToDevice();
     }
 
     // Ensure data is valid before beginning advance. This addresses
@@ -676,19 +664,7 @@ Castro::finalize_advance(Real time, Real dt, int amr_iteration, int amr_ncycle)
     // on the last iteration.
 
     if (!(level == parent->finestLevel() && amr_iteration < amr_ncycle)) {
-
-        for (int k = 0; k < num_state_type; k++) {
-
-            if (state[k].hasOldData()) {
-                amrex::prefetchToHost(get_old_data(k));
-            }
-
-            if (state[k].hasNewData()) {
-                amrex::prefetchToHost(get_new_data(k));
-            }
-
-        }
-
+        prefetchToHost();
     }
 
     // Record how many zones we have advanced.

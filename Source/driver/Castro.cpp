@@ -2975,6 +2975,40 @@ Castro::removeOldData()
     AmrLevel::removeOldData();
 }
 
+void Castro::prefetchToHost()
+{
+
+    for (int k = 0; k < num_state_type; k++) {
+
+        if (state[k].hasOldData()) {
+            amrex::prefetchToHost(get_old_data(k));
+        }
+
+        if (state[k].hasNewData()) {
+            amrex::prefetchToHost(get_new_data(k));
+        }
+
+    }
+
+}
+
+void Castro::prefetchToDevice()
+{
+
+    for (int k = 0; k < num_state_type; k++) {
+
+        if (state[k].hasOldData()) {
+            amrex::prefetchToDevice(get_old_data(k));
+        }
+
+        if (state[k].hasNewData()) {
+            amrex::prefetchToDevice(get_new_data(k));
+        }
+
+    }
+
+}
+
 void
 Castro::errorEst (TagBoxArray& tags,
                   int          clearval,

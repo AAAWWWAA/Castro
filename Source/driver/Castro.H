@@ -886,6 +886,16 @@ public:
     virtual void removeOldData () override;
 
 ///
+/// Prefetch data on this level to the host.
+///
+    void prefetchToHost();
+
+///
+/// Prefetch data on this level to the device.
+///
+    void prefetchToDevice();
+
+///
 /// Passes some data about the grid to a Fortran module.
 ///
 /// Send refinement data to Fortran. We do it here
