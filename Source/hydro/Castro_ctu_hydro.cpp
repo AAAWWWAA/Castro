@@ -123,6 +123,33 @@ Castro::construct_ctu_hydro_source(Real time, Real dt)
 
     for (MFIter mfi(S_new, hydro_tile_size); mfi.isValid(); ++mfi) {
 
+      // If we are oversubscribing GPU memory, prefetch this Fab's worth
+      // of data into the GPU. This will evict other data, but we are
+      // mostly concerned about whether the data we actually need
+      // is here and isn't coming in via page faulting.
+
+      if (oversubscribing()) {
+          Sborder.prefetchToDevice(mfi);
+          q.prefetchToDevice(mfi);
+          src_q.prefetchToDevice(mfi);
+          qaux.prefetchToDevice(mfi);
+          volume.prefetchToDevice(mfi);
+          for (int idir = 0; idir < AMREX_SPACEDIM; ++idir) {
+              area[idir].prefetchToDevice(mfi);
+              fluxes[idir]->prefetchToDevice(mfi);
+              mass_fluxes[idir]->prefetchToDevice(mfi);
+#ifdef RADIATION
+              rad_fluxes[idir]->prefetchToDevice(mfi);
+#endif
+          }
+#if AMREX_SPACEDIM <= 2
+          if (!Geom()::IsCartesian()) {
+              P_radial.prefetchToDevice(mfi);
+          }
+          dLogArea[0].prefetchToDevice(mfi);
+#endif
+      }
+
       size_t fab_size = 0;
 
       // the valid region box
@@ -133,11 +160,17 @@ Castro::construct_ctu_hydro_source(Real time, Real dt)
       flatn.resize(obx, 1);
       Elixir elix_flatn = flatn.elixir();
       fab_size += flatn.nBytes();
+      if (oversubscribing()) {
+          flatn.prefetchToDevice();
+      }
 
 #ifdef RADIATION
       flatg.resize(obx, 1);
       Elixir elix_flatg = flatg.elixir();
       fab_size += flatg.nBytes();
+      if (oversubscribing()) {
+          flatn.prefetchToDevice();
+      }
 #endif
 
       // compute the flattening coefficient
@@ -176,33 +209,54 @@ Castro::construct_ctu_hydro_source(Real time, Real dt)
       shk.resize(obx, 1);
       Elixir elix_shk = shk.elixir();
       fab_size += shk.nBytes();
+      if (oversubscribing()) {
+          shk.prefetchToDevice();
+      }
 
       qxm.resize(obx, NQ);
       Elixir elix_qxm = qxm.elixir();
       fab_size += shk.nBytes();
+      if (oversubscribing()) {
+          qxm.prefetchToDevice();
+      }
 
       qxp.resize(obx, NQ);
       Elixir elix_qxp = qxp.elixir();
       fab_size += qxp.nBytes();
+      if (oversubscribing()) {
+          qxp.prefetchToDevice();
+      }
 
 #if AMREX_SPACEDIM >= 2
       qym.resize(obx, NQ);
       Elixir elix_qym = qym.elixir();
       fab_size += qym.nBytes();
+      if (oversubscribing()) {
+          qym.prefetchToDevice();
+      }
 
       qyp.resize(obx, NQ);
       Elixir elix_qyp = qyp.elixir();
       fab_size += qyp.nBytes();
+      if (oversubscribing()) {
+          qyp.prefetchToDevice();
+      }
 #endif
 
 #if AMREX_SPACEDIM == 3
       qzm.resize(obx, NQ);
       Elixir elix_qzm = qzm.elixir();
       fab_size += qzm.nBytes();
+      if (oversubscribing()) {
+          qzm.prefetchToDevice();
+      }
 
       qzp.resize(obx, NQ);
       Elixir elix_qzp = qzp.elixir();
       fab_size += qzp.nBytes();
+      if (oversubscribing()) {
+          qzp.prefetchToDevice();
+      }
 #endif
 
       if (ppm_type == 0) {
@@ -210,6 +264,9 @@ Castro::construct_ctu_hydro_source(Real time, Real dt)
         dq.resize(obx, NQ);
         Elixir elix_dq = dq.elixir();
         fab_size += dq.nBytes();
+        if (oversubscribing()) {
+            dq.prefetchToDevice();
+        }
 
 #pragma gpu box(obx)
         ctu_plm_states(AMREX_INT_ANYD(obx.loVect()), AMREX_INT_ANYD(obx.hiVect()),
@@ -241,34 +298,58 @@ Castro::construct_ctu_hydro_source(Real time, Real dt)
         Ip.resize(obx, 3*NQ);
         Elixir elix_Ip = Ip.elixir();
         fab_size += Ip.nBytes();
+        if (oversubscribing()) {
+            Ip.prefetchToDevice();
+        }
 
         Im.resize(obx, 3*NQ);
         Elixir elix_Im = Im.elixir();
         fab_size += Im.nBytes();
+        if (oversubscribing()) {
+            Im.prefetchToDevice();
+        }
 
         Ip_src.resize(obx, 3*NQSRC);
         Elixir elix_Ip_src = Ip_src.elixir();
         fab_size += Ip_src.nBytes();
+        if (oversubscribing()) {
+            Ip_src.prefetchToDevice();
+        }
 
         Im_src.resize(obx, 3*NQSRC);
         Elixir elix_Im_src = Im_src.elixir();
         fab_size += Im_src.nBytes();
+        if (oversubscribing()) {
+            Im_src.prefetchToDevice();
+        }
 
         Ip_gc.resize(obx, 3);
         Elixir elix_Ip_gc = Ip_gc.elixir();
         fab_size += Ip_gc.nBytes();
+        if (oversubscribing()) {
+            Ip_gc.prefetchToDevice();
+        }
 
         Im_gc.resize(obx, 3);
         Elixir elix_Im_gc = Im_gc.elixir();
         fab_size += Im_gc.nBytes();
+        if (oversubscribing()) {
+            Im_gc.prefetchToDevice();
+        }
 
         sm.resize(obx, AMREX_SPACEDIM);
         Elixir elix_sm = sm.elixir();
         fab_size += sm.nBytes();
+        if (oversubscribing()) {
+            sm.prefetchToDevice();
+        }
 
         sp.resize(obx, AMREX_SPACEDIM);
         Elixir elix_sp = sp.elixir();
         fab_size += sp.nBytes();
+        if (oversubscribing()) {
+            sp.prefetchToDevice();
+        }
 
 #pragma gpu box(obx)
         ctu_ppm_states(AMREX_INT_ANYD(obx.loVect()), AMREX_INT_ANYD(obx.hiVect()),
@@ -306,6 +387,9 @@ Castro::construct_ctu_hydro_source(Real time, Real dt)
       div.resize(obx, 1);
       Elixir elix_div = div.elixir();
       fab_size += div.nBytes();
+      if (oversubscribing()) {
+          div.prefetchToDevice();
+      }
 
       // compute divu -- we'll use this later when doing the artifical viscosity
 #pragma gpu box(obx)
@@ -317,40 +401,64 @@ Castro::construct_ctu_hydro_source(Real time, Real dt)
       q_int.resize(obx, NQ);
       Elixir elix_q_int = q_int.elixir();
       fab_size += q_int.nBytes();
+      if (oversubscribing()) {
+          q_int.prefetchToDevice();
+      }
 
 #ifdef RADIATION
       lambda_int.resize(obx, Radiation::nGroups);
       Elixir elix_lambda_int = lambda_int.elixir();
       fab_size += lambda_int.nBytes();
+      if (oversubscribing()) {
+          lambda_int.prefetchToDevice();
+      }
 #endif
 
       flux[0].resize(gxbx, NUM_STATE);
       Elixir elix_flux_x = flux[0].elixir();
       fab_size += flux[0].nBytes();
+      if (oversubscribing()) {
+          flux[0].prefetchToDevice();
+      }
 
       qe[0].resize(gxbx, NGDNV);
       Elixir elix_qe_x = qe[0].elixir();
       fab_size += qe[0].nBytes();
+      if (oversubscribing()) {
+          qe[0].prefetchToDevice();
+      }
 
 #ifdef RADIATION
       rad_flux[0].resize(gxbx, Radiation::nGroups);
       Elixir elix_rad_flux_x = rad_flux[0].elixir();
       fab_size += rad_flux[0].nBytes();
+      if (oversubscribing()) {
+          rad_flux[0].prefetchToDevice();
+      }
 #endif
 
 #if AMREX_SPACEDIM >= 2
       flux[1].resize(gybx, NUM_STATE);
       Elixir elix_flux_y = flux[1].elixir();
       fab_size += flux[1].nBytes();
+      if (oversubscribing()) {
+          flux[1].prefetchToDevice();
+      }
 
       qe[1].resize(gybx, NGDNV);
       Elixir elix_qe_y = qe[1].elixir();
       fab_size += qe[1].nBytes();
+      if (oversubscribing()) {
+          qe[1].prefetchToDevice();
+      }
 
 #ifdef RADIATION
       rad_flux[1].resize(gybx, Radiation::nGroups);
       Elixir elix_rad_flux_y = rad_flux[1].elixir();
       fab_size += rad_flux[1].nBytes();
+      if (oversubscribing()) {
+          rad_flux[1].prefetchToDevice();
+      }
 #endif
 #endif
 
@@ -358,15 +466,24 @@ Castro::construct_ctu_hydro_source(Real time, Real dt)
       flux[2].resize(gzbx, NUM_STATE);
       Elixir elix_flux_z = flux[2].elixir();
       fab_size += flux[2].nBytes();
+      if (oversubscribing()) {
+          flux[2].prefetchToDevice();
+      }
 
       qe[2].resize(gzbx, NGDNV);
       Elixir elix_qe_z = qe[2].elixir();
       fab_size += qe[2].nBytes();
+      if (oversubscribing()) {
+          qe[2].prefetchToDevice();
+      }
 
 #ifdef RADIATION
       rad_flux[2].resize(gzbx, Radiation::nGroups);
       Elixir elix_rad_flux_z = rad_flux[2].elixir();
       fab_size += rad_flux[2].nBytes();
+      if (oversubscribing()) {
+          rad_flux[2].prefetchToDevice();
+      }
 #endif
 #endif
 
@@ -376,6 +493,9 @@ Castro::construct_ctu_hydro_source(Real time, Real dt)
       }
       Elixir elix_pradial = pradial.elixir();
       fab_size += pradial.nBytes();
+      if (oversubscribing()) {
+          pradial.prefetchToDevice();
+      }
 #endif
 
 #if AMREX_SPACEDIM == 1
@@ -402,36 +522,60 @@ Castro::construct_ctu_hydro_source(Real time, Real dt)
       ftmp1.resize(obx, NUM_STATE);
       Elixir elix_ftmp1 = ftmp1.elixir();
       fab_size += ftmp1.nBytes();
+      if (oversubscribing()) {
+          ftmp1.prefetchToDevice();
+      }
 
       ftmp2.resize(obx, NUM_STATE);
       Elixir elix_ftmp2 = ftmp2.elixir();
       fab_size += ftmp2.nBytes();
+      if (oversubscribing()) {
+          ftmp2.prefetchToDevice();
+      }
 
 #ifdef RADIATION
       rftmp1.resize(obx, Radiation::nGroups);
       Elixir elix_rftmp1 = rftmp1.elixir();
       fab_size += rftmp1.nBytes();
+      if (oversubscribing()) {
+          rftmp1.prefetchToDevice();
+      }
 
       rftmp2.resize(obx, Radiation::nGroups);
       Elixir elix_rftmp2 = rftmp2.elixir();
       fab_size += rftmp2.nBytes();
+      if (oversubscribing()) {
+          rftmp2.prefetchToDevice();
+      }
 #endif
 
       qgdnvtmp1.resize(obx, NGDNV);
       Elixir elix_qgdnvtmp1 = qgdnvtmp1.elixir();
       fab_size += qgdnvtmp1.nBytes();
+      if (oversubscribing()) {
+          qgdnvtmp1.prefetchToDevice();
+      }
 
       qgdnvtmp2.resize(obx, NGDNV);
       Elixir elix_qgdnvtmp2 = qgdnvtmp2.elixir();
       fab_size += qgdnvtmp2.nBytes();
+      if (oversubscribing()) {
+          qgdnvtmp2.prefetchToDevice();
+      }
 
       ql.resize(obx, NQ);
       Elixir elix_ql = ql.elixir();
       fab_size += ql.nBytes();
+      if (oversubscribing()) {
+          ql.prefetchToDevice();
+      }
 
       qr.resize(obx, NQ);
       Elixir elix_qr = qr.elixir();
       fab_size += qr.nBytes();
+      if (oversubscribing()) {
+          qr.prefetchToDevice();
+      }
 #endif
 
 
@@ -604,10 +748,16 @@ Castro::construct_ctu_hydro_source(Real time, Real dt)
       qmyx.resize(tyxbx, NQ);
       Elixir elix_qmyx = qmyx.elixir();
       fab_size += qmyx.nBytes();
+      if (oversubscribing()) {
+          qmyx.prefetchToDevice();
+      }
 
       qpyx.resize(tyxbx, NQ);
       Elixir elix_qpyx = qpyx.elixir();
       fab_size += qpyx.nBytes();
+      if (oversubscribing()) {
+          qpyx.prefetchToDevice();
+      }
 
       // ftmp1 = fx
       // rftmp1 = rfx
@@ -632,10 +782,16 @@ Castro::construct_ctu_hydro_source(Real time, Real dt)
       qmzx.resize(tzxbx, NQ);
       Elixir elix_qmzx = qmzx.elixir();
       fab_size += qmzx.nBytes();
+      if (oversubscribing()) {
+          qmzx.prefetchToDevice();
+      }
 
       qpzx.resize(tzxbx, NQ);
       Elixir elix_qpzx = qpzx.elixir();
       fab_size += qpzx.nBytes();
+      if (oversubscribing()) {
+          qpzx.prefetchToDevice();
+      }
 
 #pragma gpu box(tzxbx)
       transx_on_zstates(AMREX_INT_ANYD(tzxbx.loVect()), AMREX_INT_ANYD(tzxbx.hiVect()),
@@ -679,10 +835,16 @@ Castro::construct_ctu_hydro_source(Real time, Real dt)
       qmxy.resize(txybx, NQ);
       Elixir elix_qmxy = qmxy.elixir();
       fab_size += qmxy.nBytes();
+      if (oversubscribing()) {
+          qmxy.prefetchToDevice();
+      }
 
       qpxy.resize(txybx, NQ);
       Elixir elix_qpxy = qpxy.elixir();
       fab_size += qpxy.nBytes();
+      if (oversubscribing()) {
+          qpxy.prefetchToDevice();
+      }
 
       // ftmp1 = fy
       // rftmp1 = rfy
@@ -707,10 +869,16 @@ Castro::construct_ctu_hydro_source(Real time, Real dt)
       qmzy.resize(tzybx, NQ);
       Elixir elix_qmzy = qmzy.elixir();
       fab_size += qmzy.nBytes();
+      if (oversubscribing()) {
+          qmzy.prefetchToDevice();
+      }
 
       qpzy.resize(tzybx, NQ);
       Elixir elix_qpzy = qpzy.elixir();
       fab_size += qpzy.nBytes();
+      if (oversubscribing()) {
+          qpzy.prefetchToDevice();
+      }
 
       // ftmp1 = fy
       // rftmp1 = rfy
@@ -757,10 +925,16 @@ Castro::construct_ctu_hydro_source(Real time, Real dt)
       qmxz.resize(txzbx, NQ);
       Elixir elix_qmxz = qmxz.elixir();
       fab_size += qmxz.nBytes();
+      if (oversubscribing()) {
+          qmzx.prefetchToDevice();
+      }
 
       qpxz.resize(txzbx, NQ);
       Elixir elix_qpxz = qpxz.elixir();
       fab_size += qpxz.nBytes();
+      if (oversubscribing()) {
+          qpxz.prefetchToDevice();
+      }
 
       // ftmp1 = fz
       // rftmp1 = rfz
@@ -785,10 +959,16 @@ Castro::construct_ctu_hydro_source(Real time, Real dt)
       qmyz.resize(tyzbx, NQ);
       Elixir elix_qmyz = qmyz.elixir();
       fab_size += qmyz.nBytes();
+      if (oversubscribing()) {
+          qmyz.prefetchToDevice();
+      }
 
       qpyz.resize(tyzbx, NQ);
       Elixir elix_qpyz = qpyz.elixir();
       fab_size += qpyz.nBytes();
+      if (oversubscribing()) {
+          qpyz.prefetchToDevice();
+      }
 
       // ftmp1 = fz
       // rftmp1 = rfz
@@ -1136,6 +1316,9 @@ Castro::construct_ctu_hydro_source(Real time, Real dt)
       pdivu.resize(bx, 1);
       Elixir elix_pdivu = pdivu.elixir();
       fab_size += pdivu.nBytes();
+      if (oversubscribing()) {
+          pdivu.prefetchToDevice();
+      }
 
       // conservative update
 
