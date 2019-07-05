@@ -1,6 +1,7 @@
 #include "Castro.H"
 #include "Castro_F.H"
 #include "Castro_hydro_F.H"
+#include "Castro_advection_util.H"
 
 using namespace amrex;
 
@@ -345,10 +346,11 @@ Castro::construct_mol_hydro_source(Real time, Real dt, MultiFab& A_update)
               }
 
               // ensure that the species fluxes are normalized
-#pragma gpu box(nbx)
-              normalize_species_fluxes
-                (AMREX_INT_ANYD(nbx.loVect()), AMREX_INT_ANYD(nbx.hiVect()),
-                 BL_TO_FORTRAN_ANYD(flux[idir]));
+              amrex::ParallelFor(nbx,
+              [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
+              {
+                  normalize_species_fluxes(i, j, k, flux_arr);
+              });
 
             }
 

@@ -1631,7 +1631,7 @@ contains
 
 
 
-  subroutine normalize_species_fluxes(lo, hi, flux, f_lo, f_hi) bind(c, name="normalize_species_fluxes")
+  subroutine normalize_species_fluxes(lo, hi, flux, f_lo, f_hi)
     ! Normalize the fluxes of the mass fractions so that
     ! they sum to 0.  This is essentially the CMA procedure that is
     ! defined in Plewa & Muller, 1999, A&A, 342, 179.
