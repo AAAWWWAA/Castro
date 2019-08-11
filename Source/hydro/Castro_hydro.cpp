@@ -31,7 +31,7 @@ Castro::cons_to_prim(const Real time)
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (MFIter mfi(S_new, hydro_tile_size); mfi.isValid(); ++mfi) {
+    for (MFIter mfi(S_new); mfi.isValid(); ++mfi) {
 
         const Box& qbx = mfi.growntilebox(NUM_GROW);
 
@@ -106,7 +106,7 @@ Castro::cons_to_prim(MultiFab& u, MultiFab& q, MultiFab& qaux, Real time)
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (MFIter mfi(u, true); mfi.isValid(); ++mfi) {
+    for (MFIter mfi(u); mfi.isValid(); ++mfi) {
 
         const Box& bx = mfi.growntilebox(ng);
 
@@ -144,7 +144,7 @@ Castro::cons_to_prim_fourth(const Real time)
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (MFIter mfi(S_new, hydro_tile_size); mfi.isValid(); ++mfi) {
+    for (MFIter mfi(S_new); mfi.isValid(); ++mfi) {
 
       const Box& qbx = mfi.growntilebox(NUM_GROW);
       const Box& qbxm1 = mfi.growntilebox(NUM_GROW-1);
@@ -211,7 +211,7 @@ Castro::cons_to_prim_fourth(const Real time)
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (MFIter mfi(S_new, hydro_tile_size); mfi.isValid(); ++mfi) {
+    for (MFIter mfi(S_new); mfi.isValid(); ++mfi) {
 
       const Box& qbxm1 = mfi.growntilebox(NUM_GROW-1);
 
@@ -251,7 +251,7 @@ Castro::check_for_cfl_violation(const Real dt)
 #ifdef _OPENMP
 #pragma omp parallel reduction(max:courno)
 #endif
-    for (MFIter mfi(S_new, hydro_tile_size); mfi.isValid(); ++mfi) {
+    for (MFIter mfi(S_new); mfi.isValid(); ++mfi) {
 
         const Box& bx = mfi.tilebox();
 

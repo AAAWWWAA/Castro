@@ -78,7 +78,7 @@ Castro::advance (Real time,
       MultiFab& R_new = get_new_data(Reactions_Type);
       MultiFab& S_new = get_new_data(State_Type);
 
-      for (MFIter mfi(R_new, hydro_tile_size); mfi.isValid(); ++mfi) {
+      for (MFIter mfi(R_new); mfi.isValid(); ++mfi) {
         const Box& bx = mfi.tilebox();
         const int idx = mfi.tileIndex();
 

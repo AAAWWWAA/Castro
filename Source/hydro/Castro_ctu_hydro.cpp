@@ -119,7 +119,7 @@ Castro::construct_ctu_hydro_source(Real time, Real dt)
     size_t starting_size = MultiFab::queryMemUsage("AmrLevel_Level_" + std::to_string(level));
     size_t current_size = starting_size;
 
-    for (MFIter mfi(S_new, hydro_tile_size); mfi.isValid(); ++mfi) {
+    for (MFIter mfi(S_new); mfi.isValid(); ++mfi) {
 
       size_t fab_size = 0;
 

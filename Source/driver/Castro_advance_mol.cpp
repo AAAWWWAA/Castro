@@ -82,7 +82,7 @@ Castro::do_advance_mol (Real time,
       // if we are 4th order, convert to cell-center Sborder -> Sborder_cc
       // we'll reuse sources_for_hydro for this memory buffer at the moment
 
-      for (MFIter mfi(S_new, hydro_tile_size); mfi.isValid(); ++mfi) {
+      for (MFIter mfi(S_new); mfi.isValid(); ++mfi) {
         const Box& gbx = mfi.growntilebox(1);
         ca_make_cell_center(BL_TO_FORTRAN_BOX(gbx),
                             BL_TO_FORTRAN_FAB(Sborder[mfi]),

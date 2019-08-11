@@ -45,7 +45,7 @@ Castro::fill_hybrid_hydro_source(MultiFab& sources, MultiFab& state, Real mult_f
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-  for (MFIter mfi(state, true); mfi.isValid(); ++mfi) {
+  for (MFIter mfi(state); mfi.isValid(); ++mfi) {
 
     const Box& bx = mfi.tilebox();
 
@@ -69,7 +69,7 @@ Castro::linear_to_hybrid_momentum(MultiFab& state, int ng)
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (MFIter mfi(state, true); mfi.isValid(); ++mfi)
+    for (MFIter mfi(state); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.growntilebox(ng);
 
@@ -88,7 +88,7 @@ Castro::hybrid_to_linear_momentum(MultiFab& state, int ng)
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (MFIter mfi(state, true); mfi.isValid(); ++mfi)
+    for (MFIter mfi(state); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.growntilebox(ng);
 

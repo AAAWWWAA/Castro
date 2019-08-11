@@ -66,7 +66,7 @@ Castro::construct_mol_hydro_source(Real time, Real dt, MultiFab& A_update)
 #endif
 
     // The fourth order stuff cannot do tiling because of the Laplacian corrections
-    for (MFIter mfi(S_new, (mol_order == 4 || sdc_order == 4) ? no_tile_size : hydro_tile_size); mfi.isValid(); ++mfi)
+    for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
       {
 	const Box& bx  = mfi.tilebox();
 

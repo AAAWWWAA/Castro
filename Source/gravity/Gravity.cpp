@@ -670,7 +670,7 @@ Gravity::GetCrsePhi(int level,
 #endif
     {
 	FArrayBox PhiCrseTemp;
-	for (MFIter mfi(phi_crse,true); mfi.isValid(); ++mfi)
+	for (MFIter mfi(phi_crse); mfi.isValid(); ++mfi)
         {
 	    const Box& gtbx = mfi.growntilebox();
 
@@ -1038,7 +1038,7 @@ Gravity::test_level_grad_phi_prev(int level)
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (MFIter mfi(Rhs,true); mfi.isValid(); ++mfi)
+    for (MFIter mfi(Rhs); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.tilebox();
         // Test whether using the edge-based gradients
@@ -1109,7 +1109,7 @@ Gravity::test_level_grad_phi_curr(int level)
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (MFIter mfi(Rhs,true); mfi.isValid(); ++mfi)
+    for (MFIter mfi(Rhs); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.tilebox();
         // Test whether using the edge-based gradients
@@ -1289,7 +1289,7 @@ Gravity::make_prescribed_grav(int level, Real time, MultiFab& grav_vector, Multi
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (MFIter mfi(phi,true); mfi.isValid(); ++mfi)
+    for (MFIter mfi(phi); mfi.isValid(); ++mfi)
     {
        const Box& bx = mfi.growntilebox();
        ca_prescribe_phi(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
@@ -1299,7 +1299,7 @@ Gravity::make_prescribed_grav(int level, Real time, MultiFab& grav_vector, Multi
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (MFIter mfi(grav_vector,true); mfi.isValid(); ++mfi)
+    for (MFIter mfi(grav_vector); mfi.isValid(); ++mfi)
     {
        const Box& bx = mfi.growntilebox();
        ca_prescribe_grav(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
@@ -1335,7 +1335,7 @@ Gravity::interpolate_monopole_grav(int level, Vector<Real>& radial_grav, MultiFa
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (MFIter mfi(grav_vector,true); mfi.isValid(); ++mfi)
+    for (MFIter mfi(grav_vector); mfi.isValid(); ++mfi)
     {
        const Box& bx = mfi.growntilebox();
        ca_put_radial_grav(bx.loVect(),bx.hiVect(),dx,&dr,
@@ -1382,7 +1382,7 @@ Gravity::make_radial_phi(int level, const MultiFab& Rhs, MultiFab& phi, int fill
 #ifdef _OPENMP
 	int tid = omp_get_thread_num();
 #endif
-	for (MFIter mfi(Rhs,true); mfi.isValid(); ++mfi)
+	for (MFIter mfi(Rhs); mfi.isValid(); ++mfi)
 	{
 	    const Box& bx = mfi.tilebox();
 	    ca_compute_radial_mass(bx.loVect(), bx.hiVect(),dx,&dr,
@@ -1419,7 +1419,7 @@ Gravity::make_radial_phi(int level, const MultiFab& Rhs, MultiFab& phi, int fill
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (MFIter mfi(phi,true); mfi.isValid(); ++mfi)
+    for (MFIter mfi(phi); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.growntilebox();
         ca_put_radial_phi(bx.loVect(), bx.hiVect(),
@@ -1579,7 +1579,7 @@ Gravity::fill_multipole_BCs(int crse_level, int fine_level, const Vector<MultiFa
 	    priv_qUC[tid]->setVal(0.0);
 	    priv_qUS[tid]->setVal(0.0);
 #endif
-	    for (MFIter mfi(source,true); mfi.isValid(); ++mfi)
+	    for (MFIter mfi(source); mfi.isValid(); ++mfi)
 	    {
 	        const Box& bx = mfi.tilebox();
 
@@ -1714,7 +1714,7 @@ Gravity::fill_multipole_BCs(int crse_level, int fine_level, const Vector<MultiFa
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (MFIter mfi(phi,true); mfi.isValid(); ++mfi)
+    for (MFIter mfi(phi); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.growntilebox();
 
@@ -1865,7 +1865,7 @@ Gravity::fill_direct_sum_BCs(int crse_level, int fine_level, const Vector<MultiF
 	    priv_bcYZLo[tid]->setVal(0.0);
 	    priv_bcYZHi[tid]->setVal(0.0);
 #endif
-	    for (MFIter mfi(source,true); mfi.isValid(); ++mfi)
+	    for (MFIter mfi(source); mfi.isValid(); ++mfi)
 	    {
 		const Box bx = mfi.tilebox();
 
@@ -1947,7 +1947,7 @@ Gravity::fill_direct_sum_BCs(int crse_level, int fine_level, const Vector<MultiF
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (MFIter mfi(phi,true); mfi.isValid(); ++mfi)
+    for (MFIter mfi(phi); mfi.isValid(); ++mfi)
     {
         const Box& bx= mfi.growntilebox();
 
@@ -1989,7 +1989,7 @@ Gravity::applyMetricTerms(int level, MultiFab& Rhs, const Vector<MultiFab*>& coe
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (MFIter mfi(Rhs,true); mfi.isValid(); ++mfi)
+    for (MFIter mfi(Rhs); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.tilebox();
 	const Box& xbx = mfi.nodaltilebox(0);
@@ -2020,7 +2020,7 @@ Gravity::unweight_cc(int level, MultiFab& cc)
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (MFIter mfi(cc,true); mfi.isValid(); ++mfi)
+    for (MFIter mfi(cc); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.tilebox();
         ca_unweight_cc(AMREX_ARLIM_ANYD(bx.loVect()), AMREX_ARLIM_ANYD(bx.hiVect()),
@@ -2038,7 +2038,7 @@ Gravity::unweight_edges(int level, const Vector<MultiFab*>& edges)
 #pragma omp parallel
 #endif
     for (int idir=0; idir<BL_SPACEDIM; ++idir) {
-	for (MFIter mfi(*edges[idir],true); mfi.isValid(); ++mfi)
+	for (MFIter mfi(*edges[idir]); mfi.isValid(); ++mfi)
 	{
 	    const Box& bx = mfi.tilebox();
 	    ca_unweight_edges(AMREX_ARLIM_ANYD(bx.loVect()), AMREX_ARLIM_ANYD(bx.hiVect()),
@@ -2132,7 +2132,7 @@ Gravity::add_pointmass_to_gravity (int level, MultiFab& phi, MultiFab& grav_vect
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (MFIter mfi(grav_vector, true); mfi.isValid(); ++mfi)
+    for (MFIter mfi(grav_vector); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.growntilebox();
 
@@ -2168,7 +2168,7 @@ Gravity::computeAvg (int level, MultiFab* mf, bool mask)
 #ifdef _OPENMP
 #pragma omp parallel reduction(+:sum)
 #endif
-    for (MFIter mfi(*mf,true); mfi.isValid(); ++mfi)
+    for (MFIter mfi(*mf); mfi.isValid(); ++mfi)
     {
         FArrayBox& fab = (*mf)[mfi];
 
@@ -2292,7 +2292,7 @@ Gravity::make_radial_gravity(int level, Real time, Vector<Real>& radial_grav)
 #ifdef _OPENMP
 	    int tid = omp_get_thread_num();
 #endif
-	    for (MFIter mfi(S,true); mfi.isValid(); ++mfi)
+	    for (MFIter mfi(S); mfi.isValid(); ++mfi)
 	    {
 	        const Box& bx = mfi.tilebox();
 		FArrayBox& fab = S[mfi];
