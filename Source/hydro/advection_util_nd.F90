@@ -869,7 +869,7 @@ contains
 
              fluxL = dflux(uL, qL, idir, idxL)
              fluxR = dflux(uR, qR, idir, idxR)
-             fluxLF = HALF * (fluxL(:) + fluxR(:) + (cfl / dtdx / alpha) * (uL(:) - uR(:)))
+             fluxLF = HALF * (fluxL(:) + fluxR(:))
 
              ! Limit the Lax-Friedrichs flux so that it doesn't cause a density < density_floor.
              ! To do this, first, construct the density change corresponding to the LF density flux.
