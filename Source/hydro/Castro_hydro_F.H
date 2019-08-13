@@ -153,9 +153,7 @@ extern "C"
      const int idir,
      BL_FORT_FAB_ARG_3D(Sborder),
      BL_FORT_FAB_ARG_3D(q),
-     BL_FORT_FAB_ARG_3D(volume),
      BL_FORT_FAB_ARG_3D(flux),
-     BL_FORT_FAB_ARG_3D(area),
      const amrex::Real dt, const amrex::Real* dx);
 
   void normalize_species_fluxes

@@ -770,9 +770,7 @@ contains
        idir, &
        u, u_lo, u_hi, &
        q, q_lo, q_hi, &
-       vol, vol_lo, vol_hi, &
        flux, flux_lo, flux_hi, &
-       area, area_lo, area_hi, &
        dt, dx) bind(c, name="limit_hydro_fluxes_on_small_dens")
     ! The following algorithm comes from Hu, Adams, and Shu (2013), JCP, 242, 169,
     ! "Positivity-preserving method for high-order conservative schemes solving
@@ -797,18 +795,14 @@ contains
     integer, intent(in) :: u_lo(3), u_hi(3)
     integer, intent(in), value :: idir
     integer, intent(in) :: q_lo(3), q_hi(3)
-    integer, intent(in) :: vol_lo(3), vol_hi(3)
     integer, intent(in) :: lo(3), hi(3)
     integer, intent(in) :: flux_lo(3), flux_hi(3)
-    integer, intent(in) :: area_lo(3), area_hi(3)
     real(rt), intent(in) :: dx(3)
     real(rt), intent(in), value :: dt
 
     real(rt), intent(in   ) :: u(u_lo(1):u_hi(1),u_lo(2):u_hi(2),u_lo(3):u_hi(3),NVAR)
     real(rt), intent(in   ) :: q(q_lo(1):q_hi(1),q_lo(2):q_hi(2),q_lo(3):q_hi(3),NQ)
-    real(rt), intent(in   ) :: vol(vol_lo(1):vol_hi(1),vol_lo(2):vol_hi(2),vol_lo(3):vol_hi(3))
     real(rt), intent(inout) :: flux(flux_lo(1):flux_hi(1),flux_lo(2):flux_hi(2),flux_lo(3):flux_hi(3),NVAR)
-    real(rt), intent(in   ) :: area(area_lo(1):area_hi(1),area_lo(2):area_hi(2),area_lo(3):area_hi(3))
 
     integer  :: i, j, k
 
@@ -884,7 +878,7 @@ contains
              ! This is not required in the Hu et al. paper because they are only attempting to enforce
              ! positivity. Our extra requirement on rho > density_floor requires this.
 
-             flux_coef = TWO * (dt / alpha) * (area(i,j,k) / vol(i,j,k))
+             flux_coef = TWO * (dt / alpha) / dx(idir)
              drhoLF = flux_coef * fluxLF(URHO)
 
              if (uR(URHO) + drhoLF < density_floor) then
