@@ -1,14 +1,13 @@
 AMREX_HOME ?= /path/to/amrex
 CASTRO_HOME ?= /path/to/Castro
 
-# radiation needs hypre
-HYPRE_DIR ?= /path/to/Hypre
-HYPRE_OMP_DIR ?= /path/to/Hypre--with-openmp
-
 # system blas
 BLAS_LIBRARY ?= -lopenblas
 
 TOP := $(CASTRO_HOME)
+
+# radiation needs hypre
+HYPRE_DIR := $(TOP)/hypre
 
 # default microphysics locations
 EOS_HOME ?= $(TOP)/Microphysics/EOS
@@ -379,14 +378,41 @@ endif
 #------------------------------------------------------------------------------
 
 ifeq ($(USE_HYPRE), TRUE)
-  ifeq ($(USE_OMP), TRUE)
-    INCLUDE_LOCATIONS += $(HYPRE_OMP_DIR)/include
-    LIBRARY_LOCATIONS += $(HYPRE_OMP_DIR)/lib
-  else
-    INCLUDE_LOCATIONS += $(HYPRE_DIR)/include
-    LIBRARY_LOCATIONS += $(HYPRE_DIR)/lib
-  endif
-  LIBRARIES += -lHYPRE
+  HYPRE_DIRS := $(HYPRE_DIR)/src
+  HYPRE_DIRS += $(HYPRE_DIR)/src/utilities
+  HYPRE_DIRS += $(HYPRE_DIR)/src/blas  
+  HYPRE_DIRS += $(HYPRE_DIR)/src/lapack
+  HYPRE_DIRS += $(HYPRE_DIR)/src/distributed_matrix
+  HYPRE_DIRS += $(HYPRE_DIR)/src/distributed_ls/Euclid
+  HYPRE_DIRS += $(HYPRE_DIR)/src/distributed_ls/pilut
+  HYPRE_DIRS += $(HYPRE_DIR)/src/distributed_ls/ParaSails
+  HYPRE_DIRS += $(HYPRE_DIR)/src/multivector
+  HYPRE_DIRS += $(HYPRE_DIR)/src/struct_ls
+  HYPRE_DIRS += $(HYPRE_DIR)/src/sstruct_ls
+  HYPRE_DIRS += $(HYPRE_DIR)/src/struct_mv
+  HYPRE_DIRS += $(HYPRE_DIR)/src/sstruct_mv
+  HYPRE_DIRS += $(HYPRE_DIR)/src/IJ_mv
+  HYPRE_DIRS += $(HYPRE_DIR)/src/parcsr_ls
+  HYPRE_DIRS += $(HYPRE_DIR)/src/parcsr_mv
+  HYPRE_DIRS += $(HYPRE_DIR)/src/parcsr_block_mv
+  HYPRE_DIRS += $(HYPRE_DIR)/src/seq_mv
+  HYPRE_DIRS += $(HYPRE_DIR)/src/matrix_matrix
+  HYPRE_DIRS += $(HYPRE_DIR)/src/krylov
+
+  INCLUDE_LOCATIONS += $(HYPRE_DIRS)
+  Blocs += $(HYPRE_DIRS)
+
+  HYPRE_sources := $(foreach dir,$(HYPRE_DIRS),$(notdir $(wildcard $(dir)/*.c)))
+
+  BAD_HYPRE_FILES := driver%.c %matmultivec.c convert.c permute.c csr_block_matop.c \
+                     seq_multivector.c par_multivector.c backup.c smg_residual_unrolled.c \
+                     IJMatrix_isis.c IJMatrix_petsc.c par_sv_interp_lsfit.c parchord_to_parcsr.c \
+                     HYPRE_BuildIJMatrixFromDistributedMatrix.c
+
+  HYPRE_sources := $(filter-out $(BAD_HYPRE_FILES),$(HYPRE_sources))
+
+  cEXE_sources += $(HYPRE_sources)
+
 endif
 
 ifeq ($(USE_HDF5), TRUE)
